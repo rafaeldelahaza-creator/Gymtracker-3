@@ -1441,11 +1441,19 @@ function addExFromDetail() {
   const e = EXERCISES.find(x=>x.id===currentExDetailId);
   if (catMode==='logger') {
     const defSets=3, defReps=10;
+    const last = getLastExData(e.id);
+    const prog = getProgressionSuggestion(last);
     for(let si=0;si<defSets;si++){
-      loggerSets.push({exerciseId:e.id, exercise:e.name, serieNum:si+1, totalSeries:defSets, weight:'', reps:defReps, sets:1, done:false, rest:90});
+      loggerSets.push({
+        exerciseId:e.id, exercise:e.name,
+        serieNum:si+1, totalSeries:defSets,
+        weight: prog?.weight || '', reps:defReps,
+        sets:1, done:false, rest:90, rir:null
+      });
     }
     closeExDetail(); closeCatOverlay();
     renderLoggerSets();
+    showToast(`${e.name} añadido ✓`);
   } else if (catMode==='freestyle') {
     // Set the select to this exercise
     const sel = document.getElementById('fs-ex-select');
@@ -1545,6 +1553,7 @@ function renderLoggerSets() {
   }
   el.innerHTML = loggerSets.map((s,i)=>{
     const showHeader = i===0 || loggerSets[i-1].exercise!==s.exercise;
+    const isLastOfEx = i===loggerSets.length-1 || loggerSets[i+1].exercise!==s.exercise;
     const serieLabel = s.totalSeries ? `Serie ${s.serieNum} / ${s.totalSeries}` : 'Serie';
     const last = showHeader ? getLastExData(s.exerciseId) : null;
     const prog = showHeader ? getProgressionSuggestion(last) : null;
@@ -1563,9 +1572,15 @@ function renderLoggerSets() {
 
     return `
     ${showHeader ? `
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin:${i===0?0:16}px 0 6px">
-        <p style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:0">${s.exercise}</p>
-        ${last ? `<span style="font-size:11px;color:var(--text3)">Último: <b style="color:var(--accent)">${last.weight}kg × ${last.reps}</b> (${last.date})</span>` : `<span style="font-size:11px;color:var(--text3)">Sin historial</span>`}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:${i===0?0:16}px 0 6px">
+        <div>
+          <p style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:0 0 2px">${s.exercise}</p>
+          ${last ? `<span style="font-size:11px;color:var(--text3)">Último: <b style="color:var(--accent)">${last.weight}kg × ${last.reps}</b> (${last.date})</span>` : `<span style="font-size:11px;color:var(--text3)">Sin historial</span>`}
+        </div>
+        <button onclick="removeAllSetsOfEx('${s.exerciseId}','${s.exercise}')"
+          style="background:rgba(255,92,106,.1);border:1px solid rgba(255,92,106,.25);color:var(--red);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">
+          🗑 Quitar
+        </button>
       </div>
       ${prog && prog.msg ? `<div class="prog-suggest">⚡ ${prog.msg}</div>` : ''}
       ` : ''}
@@ -1574,7 +1589,7 @@ function renderLoggerSets() {
         <span style="font-size:13px;color:${s.done?'var(--accent)':'var(--text2)'}">
           ${s.done?'✓':''} ${serieLabel}
         </span>
-        <button style="background:none;border:none;color:var(--red);opacity:.5;cursor:pointer;font-size:15px" onclick="removeLoggerSet(${i})">✕</button>
+        <button style="background:none;border:none;color:var(--red);opacity:.4;cursor:pointer;font-size:15px" onclick="removeLoggerSet(${i})">✕</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         <div>
@@ -1593,7 +1608,12 @@ function renderLoggerSets() {
       <button onclick="toggleSetDone(${i})" style="width:100%;background:${s.done?'rgba(0,229,160,.1)':'var(--accent)'};color:${s.done?'var(--accent)':'var(--bg)'};border:${s.done?'1px solid rgba(0,229,160,.3)':'none'};border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;transition:all .2s">
         ${s.done?`✓ Completada${s.rir!=null?' · RIR '+s.rir:''}` :'✓ Completar serie'}
       </button>
-    </div>`;
+    </div>
+    ${isLastOfEx ? `
+    <button onclick="addSerieToEx('${s.exerciseId}','${s.exercise}')"
+      style="width:100%;background:none;border:1px dashed var(--border);border-radius:8px;color:var(--accent);font-weight:700;font-size:12px;padding:7px;cursor:pointer;margin-bottom:4px;font-family:'DM Sans',sans-serif">
+      + Serie extra a ${s.exercise}
+    </button>` : ''}`;
   }).join('');
 }
 
@@ -1605,6 +1625,35 @@ function setRir(i, val) {
 function updateLoggerSet(i,field,val) { loggerSets[i][field]=field==='weight'?val:Number(val); }
 function removeLoggerSet(i) { loggerSets.splice(i,1); renderLoggerSets(); }
 
+// Quitar todas las series de un ejercicio de golpe
+function removeAllSetsOfEx(exerciseId, exerciseName) {
+  loggerSets = loggerSets.filter(s=> !(s.exerciseId===exerciseId && s.exercise===exerciseName));
+  renderLoggerSets();
+  showToast(`${exerciseName} eliminado`);
+}
+
+// Añadir una serie extra a un ejercicio ya en el logger
+function addSerieToEx(exerciseId, exerciseName) {
+  // Find all current sets of this exercise to calculate next serieNum
+  const existing = loggerSets.filter(s=>s.exerciseId===exerciseId && s.exercise===exerciseName);
+  const lastSet = existing[existing.length-1];
+  const newSerieNum = existing.length + 1;
+  const newTotal = newSerieNum;
+  // Update totalSeries on all existing sets of this exercise
+  loggerSets.forEach(s=>{
+    if(s.exerciseId===exerciseId && s.exercise===exerciseName) s.totalSeries = newTotal;
+  });
+  // Insert the new serie right after the last one of this exercise
+  const lastIdx = loggerSets.lastIndexOf(lastSet);
+  const newSet = {
+    exerciseId, exercise: exerciseName,
+    serieNum: newSerieNum, totalSeries: newTotal,
+    weight: lastSet?.weight || '', reps: lastSet?.reps || 10,
+    sets:1, done:false, rest: lastSet?.rest||90, rir:null
+  };
+  loggerSets.splice(lastIdx+1, 0, newSet);
+  renderLoggerSets();
+}
 
 function toggleSetDone(i) {
   loggerSets[i].done = !loggerSets[i].done;
@@ -1932,6 +1981,218 @@ function exportPRList() {
 // PRESET ROUTINES BY GOAL
 // ═══════════════════════════════════════════════════════════════════
 const PRESET_ROUTINES = [
+  // ── FÁCIL ──────────────────────────────────────────────────────
+  {
+    id:'pr4', goal:'Iniciación al gimnasio', goalIcon:'🌱', color:'#A8E6CF',
+    desc:'2 días/semana de cuerpo completo. Aprende los movimientos básicos con cargas bajas y técnica correcta.',
+    nutrition:'Come de forma equilibrada sin obsesionarte. Asegura proteína en cada comida (huevo, pollo, legumbres). Hidratación constante.',
+    progression:'Semanas 1-3: aprende la técnica sin carga. Semanas 4-8: añade 2.5kg cuando completes todas las reps con comodidad. Semana 9+: incorpora una tercera sesión.',
+    days:[
+      { day:'Lunes', name:'Full Body A — Iniciación', duration:40, exercises:[
+        {exerciseId:'e27',name:'Prensa de Piernas',sets:3,seriesReps:[15,15,12],rest:120},
+        {exerciseId:'e9', name:'Jalón al Pecho',sets:3,seriesReps:[15,12,12],rest:120},
+        {exerciseId:'e13',name:'Press Militar',sets:3,seriesReps:[12,12,12],rest:120},
+        {exerciseId:'e10',name:'Remo en Polea Baja',sets:3,seriesReps:[15,12,12],rest:90},
+        {exerciseId:'e35',name:'Plancha',sets:3,seriesReps:[20,20,20],rest:90},
+      ]},
+      { day:'Jueves', name:'Full Body B — Iniciación', duration:40, exercises:[
+        {exerciseId:'e28',name:'Zancadas',sets:3,seriesReps:[12,12,12],rest:120},
+        {exerciseId:'e1', name:'Press Banca Plano',sets:3,seriesReps:[12,12,12],rest:120},
+        {exerciseId:'e12',name:'Remo con Mancuerna',sets:3,seriesReps:[12,12,12],rest:90},
+        {exerciseId:'e19',name:'Curl con Mancuernas',sets:2,seriesReps:[12,12],rest:90},
+        {exerciseId:'e36',name:'Crunch',sets:3,seriesReps:[15,15,15],rest:90},
+      ]},
+    ],
+  },
+  {
+    id:'pr5', goal:'Tonificación general', goalIcon:'✨', color:'#B5C8FF',
+    desc:'3 días/semana alternando tren superior e inferior. Mejora el tono muscular y la postura sin agotarte.',
+    nutrition:'Ligero déficit o mantenimiento. Prioriza proteínas magras y verduras. Evita ultraprocesados. No es necesario contar calorías al inicio.',
+    progression:'Semanas 1-4: consolida la técnica. Semanas 5-8: añade una serie a cada ejercicio. Semanas 9-12: reduce el descanso 10s por ejercicio.',
+    days:[
+      { day:'Lunes', name:'Tren Superior', duration:40, exercises:[
+        {exerciseId:'e9', name:'Jalón al Pecho',sets:3,seriesReps:[15,13,12],rest:90},
+        {exerciseId:'e1', name:'Press Banca Plano',sets:3,seriesReps:[12,12,12],rest:90},
+        {exerciseId:'e14',name:'Elevaciones Laterales',sets:3,seriesReps:[15,15,15],rest:90},
+        {exerciseId:'e19',name:'Curl con Mancuernas',sets:2,seriesReps:[12,12],rest:90},
+        {exerciseId:'e23',name:'Jalones en Polea',sets:2,seriesReps:[15,15],rest:90},
+      ]},
+      { day:'Miércoles', name:'Tren Inferior', duration:40, exercises:[
+        {exerciseId:'e27',name:'Prensa de Piernas',sets:3,seriesReps:[15,15,12],rest:120},
+        {exerciseId:'e29',name:'Extensión de Cuádriceps',sets:3,seriesReps:[15,15,12],rest:90},
+        {exerciseId:'e30',name:'Femoral Tumbado',sets:3,seriesReps:[15,15,12],rest:90},
+        {exerciseId:'e32',name:'Hip Thrust',sets:3,seriesReps:[15,12,12],rest:90},
+        {exerciseId:'e37',name:'Elevación de Piernas',sets:3,seriesReps:[15,15,15],rest:90},
+      ]},
+      { day:'Viernes', name:'Full Body + Cardio suave', duration:45, exercises:[
+        {exerciseId:'e10',name:'Remo en Polea Baja',sets:3,seriesReps:[12,12,12],rest:90},
+        {exerciseId:'e13',name:'Press Militar',sets:3,seriesReps:[12,12,12],rest:90},
+        {exerciseId:'e28',name:'Zancadas',sets:3,seriesReps:[12,12,12],rest:90},
+        {exerciseId:'e35',name:'Plancha',sets:3,seriesReps:[30,30,30],rest:60},
+        {exerciseId:'e40',name:'Bicicleta Estática',sets:1,seriesReps:[15],rest:0},
+      ]},
+    ],
+  },
+  // ── INTERMEDIO ─────────────────────────────────────────────────
+  {
+    id:'pr6', goal:'Fuerza funcional', goalIcon:'⚙️', color:'#7EC8E3',
+    desc:'4 días/semana Upper/Lower. Ejercicios compuestos como eje central, progresión lineal de carga. Para quien lleva 6+ meses entrenando.',
+    nutrition:'Calorías de mantenimiento o ligero superávit (100-200 kcal). Proteína 1.8-2g/kg. Carbohidratos en torno al entrenamiento.',
+    progression:'Semanas 1-4: fija los pesos base. Semanas 5-8: +2.5kg en compuestos cada semana que completes todas las series. Semanas 9-12: añade una serie a los ejercicios principales.',
+    days:[
+      { day:'Lunes', name:'Upper A — Empuje', duration:55, exercises:[
+        {exerciseId:'e1', name:'Press Banca Plano',sets:4,seriesReps:[10,10,8,8],rest:90},
+        {exerciseId:'e2', name:'Press Banca Inclinado',sets:3,seriesReps:[10,10,8],rest:90},
+        {exerciseId:'e13',name:'Press Militar',sets:3,seriesReps:[10,10,8],rest:90},
+        {exerciseId:'e14',name:'Elevaciones Laterales',sets:3,seriesReps:[12,12,12],rest:60},
+        {exerciseId:'e23',name:'Jalones en Polea',sets:3,seriesReps:[12,12,12],rest:60},
+      ]},
+      { day:'Martes', name:'Lower A — Cuádriceps', duration:55, exercises:[
+        {exerciseId:'e26',name:'Sentadilla',sets:4,seriesReps:[10,10,8,8],rest:90},
+        {exerciseId:'e27',name:'Prensa de Piernas',sets:3,seriesReps:[12,10,10],rest:90},
+        {exerciseId:'e29',name:'Extensión de Cuádriceps',sets:3,seriesReps:[12,12,10],rest:75},
+        {exerciseId:'e32',name:'Hip Thrust',sets:3,seriesReps:[12,12,10],rest:75},
+        {exerciseId:'e35',name:'Plancha',sets:3,seriesReps:[45,45,45],rest:60},
+      ]},
+      { day:'Jueves', name:'Upper B — Tirón', duration:55, exercises:[
+        {exerciseId:'e11',name:'Peso Muerto',sets:4,seriesReps:[8,8,6,6],rest:90},
+        {exerciseId:'e7', name:'Dominadas',sets:3,seriesReps:[8,8,6],rest:90},
+        {exerciseId:'e10',name:'Remo en Polea Baja',sets:3,seriesReps:[10,10,8],rest:75},
+        {exerciseId:'e18',name:'Curl con Barra',sets:3,seriesReps:[10,10,10],rest:75},
+        {exerciseId:'e20',name:'Curl Martillo',sets:2,seriesReps:[12,12],rest:60},
+      ]},
+      { day:'Viernes', name:'Lower B — Isquios/Glúteos', duration:50, exercises:[
+        {exerciseId:'e33',name:'Peso Muerto Rumano',sets:4,seriesReps:[10,10,8,8],rest:90},
+        {exerciseId:'e31',name:'Sentadilla Búlgara',sets:3,seriesReps:[10,10,10],rest:90},
+        {exerciseId:'e30',name:'Femoral Tumbado',sets:3,seriesReps:[12,12,10],rest:75},
+        {exerciseId:'e34',name:'Patada de Glúteo',sets:3,seriesReps:[15,15,15],rest:60},
+        {exerciseId:'e37',name:'Elevación de Piernas',sets:3,seriesReps:[15,15,12],rest:60},
+      ]},
+    ],
+  },
+  {
+    id:'pr7', goal:'Resistencia muscular', goalIcon:'🏅', color:'#FFDAC1',
+    desc:'3 días/semana con circuitos de alta densidad. Mejora la resistencia muscular y la capacidad aeróbica simultáneamente.',
+    nutrition:'Calorías de mantenimiento. Mayor proporción de carbohidratos (50-55%) para sostener el volumen. Proteína 1.7g/kg.',
+    progression:'Semanas 1-3: aprende el ritmo del circuito. Semanas 4-7: reduce el descanso 10s cada dos semanas. Semanas 8-12: añade una vuelta al circuito.',
+    days:[
+      { day:'Lunes', name:'Circuito Superior', duration:50, exercises:[
+        {exerciseId:'e9', name:'Jalón al Pecho',sets:4,seriesReps:[15,15,12,12],rest:60},
+        {exerciseId:'e1', name:'Press Banca Plano',sets:4,seriesReps:[12,12,12,12],rest:60},
+        {exerciseId:'e10',name:'Remo en Polea Baja',sets:3,seriesReps:[15,15,15],rest:60},
+        {exerciseId:'e17',name:'Arnold Press',sets:3,seriesReps:[12,12,12],rest:60},
+        {exerciseId:'e21',name:'Curl en Polea Baja',sets:3,seriesReps:[15,15,15],rest:45},
+        {exerciseId:'e25',name:'Extensión Sobre Cabeza',sets:3,seriesReps:[15,15,12],rest:45},
+      ]},
+      { day:'Miércoles', name:'Circuito Inferior', duration:50, exercises:[
+        {exerciseId:'e26',name:'Sentadilla',sets:4,seriesReps:[15,15,12,12],rest:60},
+        {exerciseId:'e28',name:'Zancadas',sets:4,seriesReps:[12,12,12,12],rest:60},
+        {exerciseId:'e30',name:'Femoral Tumbado',sets:3,seriesReps:[15,15,15],rest:60},
+        {exerciseId:'e32',name:'Hip Thrust',sets:3,seriesReps:[15,15,12],rest:60},
+        {exerciseId:'e36',name:'Crunch',sets:3,seriesReps:[20,20,20],rest:45},
+        {exerciseId:'e42',name:'Salto a la Comba',sets:1,seriesReps:[10],rest:0},
+      ]},
+      { day:'Viernes', name:'Circuito Full Body', duration:55, exercises:[
+        {exerciseId:'e7', name:'Dominadas',sets:3,seriesReps:[10,8,8],rest:60},
+        {exerciseId:'e5', name:'Fondos en Paralelas',sets:3,seriesReps:[12,10,10],rest:60},
+        {exerciseId:'e31',name:'Sentadilla Búlgara',sets:3,seriesReps:[12,12,10],rest:60},
+        {exerciseId:'e33',name:'Peso Muerto Rumano',sets:3,seriesReps:[12,12,12],rest:60},
+        {exerciseId:'e38',name:'Rueda Abdominal',sets:3,seriesReps:[10,10,10],rest:45},
+        {exerciseId:'e41',name:'Remo Ergómetro',sets:1,seriesReps:[12],rest:0},
+      ]},
+    ],
+  },
+  // ── DIFÍCIL ────────────────────────────────────────────────────
+  {
+    id:'pr8', goal:'Fuerza máxima', goalIcon:'🏋️', color:'#FF8B94',
+    desc:'5 días/semana con estructura Powerlifting-Bodybuilding. Pesos altos, pocas reps, descansos cortos en trabajo accesorio. Para usuarios avanzados.',
+    nutrition:'Superávit controlado 300-400 kcal. Proteína 2.2g/kg. Carbohidratos altos en días de sentadilla y peso muerto.',
+    progression:'Semanas 1-2: test de cargas. Semanas 3-6: progresión lineal +2.5kg/semana. Semanas 7-10: ondulación diaria pesado/ligero. Semanas 11-12: peak y test de máximos.',
+    days:[
+      { day:'Lunes', name:'Pecho — Volumen', duration:65, exercises:[
+        {exerciseId:'e1', name:'Press Banca Plano',sets:5,seriesReps:[8,6,5,5,4],rest:120},
+        {exerciseId:'e2', name:'Press Banca Inclinado',sets:4,seriesReps:[8,8,6,6],rest:90},
+        {exerciseId:'e3', name:'Press Banca Declinado',sets:3,seriesReps:[8,8,8],rest:90},
+        {exerciseId:'e6', name:'Crossover en Polea',sets:4,seriesReps:[12,12,10,10],rest:60},
+        {exerciseId:'e24',name:'Press Cerrado',sets:3,seriesReps:[10,10,8],rest:60},
+      ]},
+      { day:'Martes', name:'Espalda — Volumen', duration:65, exercises:[
+        {exerciseId:'e11',name:'Peso Muerto',sets:5,seriesReps:[5,5,4,4,3],rest:120},
+        {exerciseId:'e7', name:'Dominadas',sets:4,seriesReps:[8,8,6,6],rest:90},
+        {exerciseId:'e8', name:'Remo con Barra',sets:4,seriesReps:[8,8,8,8],rest:90},
+        {exerciseId:'e12',name:'Remo con Mancuerna',sets:3,seriesReps:[10,10,10],rest:60},
+        {exerciseId:'e9', name:'Jalón al Pecho',sets:3,seriesReps:[12,10,10],rest:60},
+      ]},
+      { day:'Miércoles', name:'Hombros + Brazos', duration:60, exercises:[
+        {exerciseId:'e13',name:'Press Militar',sets:5,seriesReps:[8,6,6,5,5],rest:90},
+        {exerciseId:'e14',name:'Elevaciones Laterales',sets:4,seriesReps:[15,15,12,12],rest:45},
+        {exerciseId:'e16',name:'Pájaros',sets:3,seriesReps:[15,15,12],rest:45},
+        {exerciseId:'e18',name:'Curl con Barra',sets:4,seriesReps:[10,8,8,8],rest:60},
+        {exerciseId:'e22',name:'Press Francés',sets:4,seriesReps:[10,10,8,8],rest:60},
+      ]},
+      { day:'Jueves', name:'Piernas — Sentadilla', duration:70, exercises:[
+        {exerciseId:'e26',name:'Sentadilla',sets:5,seriesReps:[8,6,5,5,4],rest:120},
+        {exerciseId:'e27',name:'Prensa de Piernas',sets:4,seriesReps:[10,10,8,8],rest:90},
+        {exerciseId:'e31',name:'Sentadilla Búlgara',sets:3,seriesReps:[10,10,8],rest:75},
+        {exerciseId:'e29',name:'Extensión de Cuádriceps',sets:3,seriesReps:[15,12,12],rest:60},
+        {exerciseId:'e35',name:'Plancha',sets:4,seriesReps:[60,60,60,60],rest:45},
+      ]},
+      { day:'Viernes', name:'Piernas — Posterior + Glúteos', duration:65, exercises:[
+        {exerciseId:'e33',name:'Peso Muerto Rumano',sets:4,seriesReps:[8,8,6,6],rest:90},
+        {exerciseId:'e32',name:'Hip Thrust',sets:5,seriesReps:[10,10,8,8,8],rest:90},
+        {exerciseId:'e30',name:'Femoral Tumbado',sets:4,seriesReps:[12,12,10,10],rest:75},
+        {exerciseId:'e34',name:'Patada de Glúteo',sets:3,seriesReps:[15,15,15],rest:45},
+        {exerciseId:'e38',name:'Rueda Abdominal',sets:3,seriesReps:[12,12,10],rest:45},
+      ]},
+    ],
+  },
+  {
+    id:'pr9', goal:'Athletic Performance', goalIcon:'⚡', color:'#FFD166',
+    desc:'5 días/semana: fuerza explosiva + cardio metabólico. Combina levantamientos pesados, trabajo unilateral y HIIT. Nivel élite.',
+    nutrition:'Superávit o mantenimiento según composición corporal. Carbohidratos altos (55-60%). Proteína 2-2.2g/kg. Timing nutricional preciso.',
+    progression:'Semanas 1-2: evaluación de bases. Semanas 3-6: pirámide ascendente semanal. Semanas 7-9: intensificación con descarga en semana 9. Semanas 10-12: fase de pico y test de rendimiento.',
+    days:[
+      { day:'Lunes', name:'Potencia — Tren Superior', duration:70, exercises:[
+        {exerciseId:'e1', name:'Press Banca Plano',sets:5,seriesReps:[6,5,4,4,3],rest:90},
+        {exerciseId:'e7', name:'Dominadas',sets:5,seriesReps:[8,8,6,6,5],rest:90},
+        {exerciseId:'e13',name:'Press Militar',sets:4,seriesReps:[6,6,5,5],rest:75},
+        {exerciseId:'e17',name:'Arnold Press',sets:3,seriesReps:[10,10,10],rest:60},
+        {exerciseId:'e20',name:'Curl Martillo',sets:3,seriesReps:[12,12,10],rest:45},
+        {exerciseId:'e22',name:'Press Francés',sets:3,seriesReps:[12,10,10],rest:45},
+      ]},
+      { day:'Martes', name:'Potencia — Tren Inferior', duration:70, exercises:[
+        {exerciseId:'e26',name:'Sentadilla',sets:5,seriesReps:[6,5,4,4,3],rest:90},
+        {exerciseId:'e11',name:'Peso Muerto',sets:4,seriesReps:[5,5,4,4],rest:90},
+        {exerciseId:'e31',name:'Sentadilla Búlgara',sets:4,seriesReps:[10,10,8,8],rest:75},
+        {exerciseId:'e32',name:'Hip Thrust',sets:4,seriesReps:[10,10,8,8],rest:75},
+        {exerciseId:'e38',name:'Rueda Abdominal',sets:4,seriesReps:[12,12,10,10],rest:45},
+      ]},
+      { day:'Miércoles', name:'Metabólico + Core', duration:55, exercises:[
+        {exerciseId:'e5', name:'Fondos en Paralelas',sets:4,seriesReps:[12,12,10,10],rest:45},
+        {exerciseId:'e8', name:'Remo con Barra',sets:4,seriesReps:[10,10,10,10],rest:45},
+        {exerciseId:'e28',name:'Zancadas',sets:4,seriesReps:[12,12,12,12],rest:45},
+        {exerciseId:'e36',name:'Crunch',sets:4,seriesReps:[20,20,20,20],rest:30},
+        {exerciseId:'e37',name:'Elevación de Piernas',sets:4,seriesReps:[15,15,15,15],rest:30},
+        {exerciseId:'e42',name:'Salto a la Comba',sets:3,seriesReps:[15,15,15],rest:30},
+      ]},
+      { day:'Jueves', name:'Accesorios — Push/Pull', duration:65, exercises:[
+        {exerciseId:'e2', name:'Press Banca Inclinado',sets:4,seriesReps:[10,8,8,6],rest:60},
+        {exerciseId:'e6', name:'Crossover en Polea',sets:4,seriesReps:[15,12,12,10],rest:45},
+        {exerciseId:'e12',name:'Remo con Mancuerna',sets:4,seriesReps:[10,10,10,10],rest:60},
+        {exerciseId:'e10',name:'Remo en Polea Baja',sets:3,seriesReps:[12,12,12],rest:45},
+        {exerciseId:'e14',name:'Elevaciones Laterales',sets:4,seriesReps:[15,15,15,15],rest:30},
+        {exerciseId:'e16',name:'Pájaros',sets:3,seriesReps:[15,15,15],rest:30},
+      ]},
+      { day:'Viernes', name:'HIIT + Posterior', duration:65, exercises:[
+        {exerciseId:'e33',name:'Peso Muerto Rumano',sets:4,seriesReps:[10,8,8,6],rest:60},
+        {exerciseId:'e30',name:'Femoral Tumbado',sets:4,seriesReps:[12,12,10,10],rest:60},
+        {exerciseId:'e34',name:'Patada de Glúteo',sets:3,seriesReps:[15,15,15],rest:45},
+        {exerciseId:'e39',name:'Carrera en Cinta',sets:3,seriesReps:[8,8,8],rest:30},
+        {exerciseId:'e41',name:'Remo Ergómetro',sets:3,seriesReps:[10,10,10],rest:30},
+      ]},
+    ],
+  },
+  // ── ORIGINALES ─────────────────────────────────────────────────
   {
     id:'pr1', goal:'Pérdida de grasa', goalIcon:'🔥', color:'#FF6B6B',
     desc:'Déficit calórico + cardio + fuerza. Alta densidad de trabajo, descansos cortos.',
@@ -2028,52 +2289,87 @@ const PRESET_ROUTINES = [
   },
 ];
 
+// nivel badge helper
+function levelBadge(id) {
+  if(['pr4','pr5'].includes(id)) return {label:'FÁCIL', color:'#A8E6CF'};
+  if(['pr6','pr7'].includes(id)) return {label:'INTERMEDIO', color:'#7EC8E3'};
+  if(['pr8','pr9'].includes(id)) return {label:'DIFÍCIL', color:'#FF8B94'};
+  return {label:'CLÁSICO', color:'#8892AA'};
+}
+
 function openPresetOverlay() {
   const el = document.getElementById('preset-list');
-  el.innerHTML = PRESET_ROUTINES.map(pr=>`
-    <div style="background:var(--bg2);border:1px solid ${pr.color}30;border-radius:18px;padding:18px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <span style="font-size:32px">${pr.goalIcon}</span>
-        <div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${pr.color};letter-spacing:1px">${pr.goal}</div>
-          <div style="font-size:12px;color:var(--text2)">${pr.days.length} días/semana</div>
-        </div>
-      </div>
-      <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px">${pr.desc}</p>
 
-      <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px">
-        <p style="font-size:11px;font-weight:700;color:${pr.color};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🥗 NUTRICIÓN</p>
-        <p style="font-size:12px;color:var(--text2);line-height:1.5">${pr.nutrition}</p>
-      </div>
+  // Group by level for display
+  const sections = [
+    { label:'🌿 Nivel Fácil', ids:['pr4','pr5'] },
+    { label:'⚙️ Nivel Intermedio', ids:['pr6','pr7'] },
+    { label:'🔥 Nivel Difícil', ids:['pr8','pr9'] },
+    { label:'📦 Clásicos', ids:['pr1','pr2','pr3'] },
+  ];
 
-      <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:14px">
-        <p style="font-size:11px;font-weight:700;color:${pr.color};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">📈 PROGRESIÓN</p>
-        <p style="font-size:12px;color:var(--text2);line-height:1.5">${pr.progression}</p>
-      </div>
-
-      <p style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">ESTRUCTURA SEMANAL</p>
-      ${pr.days.map(d=>`
-        <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-weight:700;color:var(--text)">${d.day} — ${d.name}</span>
-            <span style="font-size:11px;color:var(--text3)">${d.duration} min</span>
+  el.innerHTML = sections.map(sec=>{
+    const presets = sec.ids.map(id=>PRESET_ROUTINES.find(p=>p.id===id)).filter(Boolean);
+    return `
+      <p style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px">${sec.label}</p>
+      ${presets.map(pr=>{
+        const lvl = levelBadge(pr.id);
+        // Per-day import buttons
+        const dayBtns = pr.days.map((d,di)=>`
+          <button onclick="importPresetDay('${pr.id}',${di})"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">
+            📋 ${d.day}
+          </button>`).join('');
+        return `
+        <div style="background:var(--bg2);border:1px solid ${pr.color}30;border-radius:18px;padding:18px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="font-size:28px">${pr.goalIcon}</span>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:${pr.color};letter-spacing:1px">${pr.goal}</div>
+                <span style="background:${lvl.color}20;color:${lvl.color};border:1px solid ${lvl.color}40;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700">${lvl.label}</span>
+              </div>
+              <div style="font-size:11px;color:var(--text2)">${pr.days.length} días/semana</div>
+            </div>
           </div>
-          ${d.exercises.map(e=>`
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-              <span style="font-size:12px;color:var(--text2)">${e.name}</span>
-              <span style="font-size:12px;color:var(--text3)">${e.sets}×[${e.seriesReps.join(',')}] ${e.rest?e.rest+'s':''}</span>
-            </div>`).join('')}
-        </div>`).join('')}
+          <p style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:10px">${pr.desc}</p>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
-        <button onclick="importPresetDay('${pr.id}',0)" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer">
-          📋 Importar día 1
-        </button>
-        <button onclick="importAllPresetDays('${pr.id}')" style="background:${pr.color};color:var(--bg);border:none;border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer">
-          ✓ Importar todo
-        </button>
-      </div>
-    </div>`).join('');
+          <div style="background:var(--bg);border-radius:10px;padding:10px;margin-bottom:8px">
+            <p style="font-size:10px;font-weight:700;color:${pr.color};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🥗 NUTRICIÓN</p>
+            <p style="font-size:11px;color:var(--text2);line-height:1.5">${pr.nutrition}</p>
+          </div>
+          <div style="background:var(--bg);border-radius:10px;padding:10px;margin-bottom:12px">
+            <p style="font-size:10px;font-weight:700;color:${pr.color};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📈 PROGRESIÓN</p>
+            <p style="font-size:11px;color:var(--text2);line-height:1.5">${pr.progression}</p>
+          </div>
+
+          <p style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">ESTRUCTURA SEMANAL</p>
+          ${pr.days.map(d=>`
+            <div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:6px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-weight:700;font-size:13px;color:var(--text)">${d.day} — ${d.name}</span>
+                <span style="font-size:10px;color:var(--text3)">${d.duration}min</span>
+              </div>
+              ${d.exercises.map(e=>`
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                  <span style="font-size:11px;color:var(--text2)">${e.name}</span>
+                  <span style="font-size:11px;color:var(--text3)">${e.sets}×[${e.seriesReps.join(',')}]${e.rest?' '+e.rest+'s':''}</span>
+                </div>`).join('')}
+            </div>`).join('')}
+
+          <!-- Import buttons: one per day + import all -->
+          <div style="margin-top:10px">
+            <p style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">IMPORTAR DÍA</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${dayBtns}</div>
+            <button onclick="importAllPresetDays('${pr.id}')"
+              style="width:100%;background:${pr.color};color:var(--bg);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">
+              ✓ Importar todas las rutinas
+            </button>
+          </div>
+        </div>`;
+      }).join('')}`;
+  }).join('');
+
   document.getElementById('preset-overlay').style.display='block';
 }
 
@@ -2088,7 +2384,7 @@ function importPresetDay(prId, dayIdx) {
   };
   routines.push(routine);
   save(); renderRoutines(); renderDashboard();
-  showToast(`Rutina "${routine.name}" importada ✓`);
+  showToast(`"${routine.name}" importada ✓`);
 }
 
 function importAllPresetDays(prId) {
@@ -2103,9 +2399,8 @@ function importAllPresetDays(prId) {
   });
   save(); renderRoutines(); renderDashboard();
   document.getElementById('preset-overlay').style.display='none';
-  showToast(`${pr.days.length} rutinas de ${pr.goal} importadas ✓`);
+  showToast(`${pr.days.length} rutinas de "${pr.goal}" importadas ✓`);
 }
-
 
 // ═══════════════════════════════════════════════════════════════════
 // MODE CHOOSER
