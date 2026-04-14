@@ -248,11 +248,32 @@
     display:flex; justify-content:space-between; align-items:center;
   }
 
-  /* REST BANNER */
-  #rest-banner {
-    background:rgba(255,209,102,.1); border-bottom:1px solid rgba(255,209,102,.2);
-    padding:10px 20px; text-align:center; color:var(--yellow);
-    font-weight:700; display:none;
+  /* REST OVERLAY */
+  #rest-overlay {
+    display:none; position:fixed; inset:0; z-index:500;
+    background:rgba(0,0,0,.75); backdrop-filter:blur(6px);
+    align-items:center; justify-content:center;
+    max-width:430px; margin:0 auto;
+  }
+  #rest-overlay.active { display:flex; }
+  .rest-box {
+    background:var(--bg2); border:1px solid var(--border);
+    border-radius:24px; padding:32px 28px; width:calc(100% - 48px);
+    text-align:center; animation:fadeUp .2s ease;
+  }
+  .rest-seconds {
+    font-family:'Bebas Neue',sans-serif; font-size:80px;
+    letter-spacing:2px; line-height:1; color:var(--yellow);
+    margin:8px 0 4px;
+  }
+  .rest-bar-track {
+    background:var(--bg3); border-radius:8px; height:10px;
+    overflow:hidden; margin:16px 0 20px;
+  }
+  .rest-bar-fill {
+    height:100%; border-radius:8px;
+    background:linear-gradient(90deg, var(--yellow), #F0A500);
+    transition:width 1s linear;
   }
 
   /* PROFILE GOAL GRID */
@@ -592,7 +613,21 @@
       </div>
       <input type="text" id="logger-name" value="Entrenamiento libre" style="font-weight:700;font-size:16px">
     </div>
-    <div id="rest-banner">⏱ Descanso: <span id="rest-count">60</span>s</div>
+    <div id="rest-overlay">
+      <div class="rest-box">
+        <p style="font-size:11px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px">⏱ DESCANSO</p>
+        <div class="rest-seconds" id="rest-count">60</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:0">segundos</p>
+        <div class="rest-bar-track">
+          <div class="rest-bar-fill" id="rest-bar" style="width:100%"></div>
+        </div>
+        <button onclick="stopRestTimer()"
+          style="width:100%;background:var(--yellow);color:var(--bg);border:none;border-radius:14px;padding:14px;font-weight:700;font-size:16px;cursor:pointer;font-family:'DM Sans',sans-serif">
+          ▶ Empezar siguiente serie
+        </button>
+        <p style="font-size:11px;color:var(--text3);margin-top:12px">Toca el botón para empezar antes</p>
+      </div>
+    </div>
     <div style="padding:14px 16px 0" id="logger-sets"></div>
     <div style="padding:0 16px;margin-top:6px">
       <button class="btn-outline" onclick="openCatForLogger()">+ Añadir ejercicio</button>
@@ -1502,11 +1537,10 @@ function openLogger(routine) {
 
 function closeLogger() {
   clearInterval(loggerTimerInterval);
-  clearInterval(restInterval);
+  stopRestTimer();
   document.getElementById('logger').classList.remove('active');
   document.getElementById('nav').style.display='grid';
   document.getElementById('fab').style.display='flex';
-  document.getElementById('rest-banner').style.display='none';
 }
 
 // ─── MEJORA: datos completos de última sesión por ejercicio ───────
@@ -1663,21 +1697,34 @@ function toggleSetDone(i) {
 
 function startRestTimer(secs) {
   clearInterval(restInterval);
-  const banner = document.getElementById('rest-banner');
-  const count = document.getElementById('rest-count');
-  banner.style.display='block';
-  count.textContent = secs;
+  const overlay = document.getElementById('rest-overlay');
+  const countEl = document.getElementById('rest-count');
+  const barEl = document.getElementById('rest-bar');
+  const total = secs;
+  countEl.textContent = secs;
+  barEl.style.transition = 'none';
+  barEl.style.width = '100%';
+  overlay.classList.add('active');
+  // Small delay so the bar transition fires properly
+  requestAnimationFrame(()=> requestAnimationFrame(()=>{
+    barEl.style.transition = `width ${secs}s linear`;
+    barEl.style.width = '0%';
+  }));
   restInterval = setInterval(()=>{
     secs--;
-    count.textContent = secs;
-    if (secs<=0) {
-      clearInterval(restInterval);
-      banner.style.display='none';
-      // Vibrate when rest ends
+    countEl.textContent = secs;
+    if(secs <= 0) {
+      stopRestTimer();
       if(navigator.vibrate) navigator.vibrate([200,100,200]);
-      showToast('⏱ ¡Descanso terminado!');
+      showToast('⏱ ¡A por la siguiente serie!');
     }
-  },1000);
+  }, 1000);
+}
+
+function stopRestTimer() {
+  clearInterval(restInterval);
+  const overlay = document.getElementById('rest-overlay');
+  overlay.classList.remove('active');
 }
 
 function openCatForLogger() {
