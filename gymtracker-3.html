@@ -782,6 +782,8 @@ function load() {
 }
 
 function seedData() {
+  // Never seed if user has Drive connected — Drive will restore their data
+  if (localStorage.getItem('gt_drive_connected')) return;
   if (workouts.length > 0) return;
   const d = (offset) => new Date(Date.now() - offset*86400000).toISOString().slice(0,10);
   workouts = [
@@ -2153,7 +2155,10 @@ function saveFreeStyle() {
 // ═══════════════════════════════════════════════════════════════════
 window.addEventListener("DOMContentLoaded", ()=>{
   load();
-  seedData();
+  // Only seed example data if Drive is NOT connected and there's no real data
+  if (!localStorage.getItem('gt_drive_connected')) {
+    seedData();
+  }
   renderDashboard();
 });
 
@@ -2354,7 +2359,8 @@ async function driveLoad(manual) {
     if (data.workouts) workouts = data.workouts;
     if (data.routines) routines = data.routines;
     if (data.profile) profile = data.profile;
-    save();
+    // Save to localStorage directly (bypass Drive auto-save to avoid loop)
+    _origSave();
     renderAll();
     if (manual) showToast('Datos restaurados desde Drive');
     return true;
