@@ -121,16 +121,6 @@
   }
   .btn-outline:hover { border-color:var(--accent); }
 
-  /* REST PRESET BUTTONS */
-  .rest-preset-btn {
-    background:var(--bg); border:1px solid var(--border);
-    color:var(--text); border-radius:12px;
-    padding:12px 8px; font-weight:700; cursor:pointer;
-    font-size:14px; font-family:'DM Sans',sans-serif;
-    transition:all .2s;
-  }
-  .rest-preset-btn:active { transform:scale(.96); }
-
   /* BADGE */
   .badge {
     display:inline-block; border-radius:20px; padding:2px 10px;
@@ -481,11 +471,11 @@
         <div style="margin-top:12px;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:16px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
             <span style="font-size:20px">☁️</span>
-            <div>
+            <div style="flex:1">
               <div style="font-weight:800;font-size:14px">Google Drive</div>
               <div style="font-size:11px;color:var(--text3)" id="drive-status-text">Sin conectar</div>
             </div>
-            <div id="drive-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--text3);margin-left:auto;flex-shrink:0"></div>
+            <div id="drive-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--text3);flex-shrink:0"></div>
           </div>
           <div id="drive-btn-connect">
             <button onclick="driveSignIn()" style="width:100%;background:white;color:#333;border:none;border-radius:12px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px">
@@ -493,18 +483,12 @@
               Conectar con Google
             </button>
           </div>
-          <div id="drive-btn-connected" style="display:none;display:none">
+          <div id="drive-btn-connected" style="display:none">
             <div style="display:flex;gap:8px">
-              <button onclick="driveSave(true)" style="flex:1;background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.3);color:var(--accent);border-radius:10px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">
-                ⬆️ Guardar ahora
-              </button>
-              <button onclick="driveLoad(true)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">
-                ⬇️ Restaurar
-              </button>
+              <button onclick="driveSave(true)" style="flex:1;background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.3);color:var(--accent);border-radius:10px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">⬆️ Guardar ahora</button>
+              <button onclick="driveLoad(true)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">⬇️ Restaurar</button>
             </div>
-            <button onclick="driveSignOut()" style="width:100%;margin-top:8px;background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;padding:4px">
-              Desconectar cuenta
-            </button>
+            <button onclick="driveSignOut()" style="width:100%;margin-top:8px;background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;padding:4px">Desconectar cuenta</button>
           </div>
         </div>
         <div style="margin-top:8px;padding:10px;text-align:center">
@@ -637,19 +621,8 @@
     <div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 20px;position:sticky;top:0;z-index:50">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <button style="background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif" onclick="closeFreeStyle()">✕ Cancelar</button>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div id="fs-timer" style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--yellow);background:rgba(255,209,102,.1);padding:4px 16px;border-radius:20px">00:00</div>
-          <button id="fs-rest-btn" onclick="openFsRestPicker()" title="Temporizador de descanso"
-            style="background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.3);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--accent);font-weight:700;transition:all .2s;white-space:nowrap">
-            ⏱ <span id="fs-rest-label">60s</span>
-          </button>
-        </div>
+        <div id="fs-timer" style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--yellow);background:rgba(255,209,102,.1);padding:4px 16px;border-radius:20px">00:00</div>
         <button class="btn-primary" onclick="saveFreeStyle()" style="padding:7px 16px;font-size:13px">Guardar</button>
-      </div>
-      <!-- Rest countdown banner for freestyle -->
-      <div id="fs-rest-banner" style="display:none;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.25);border-radius:12px;padding:8px 16px;text-align:center;margin-bottom:4px;font-weight:700;font-size:14px;color:var(--accent)">
-        ⏱ Descanso: <span id="fs-rest-count">60</span>s
-        <button onclick="cancelFsRest()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;margin-left:8px;font-family:'DM Sans',sans-serif">✕</button>
       </div>
       <input type="text" id="fs-session-name" placeholder="Nombre de la sesión..." value="Entreno libre"
         style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:16px;font-weight:700;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box">
@@ -708,35 +681,6 @@
       <textarea id="fs-session-note" rows="2" placeholder="Cómo te has sentido hoy..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;resize:none;margin-top:6px;box-sizing:border-box"></textarea>
     </div>
   </div>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       FREESTYLE REST TIMER PICKER MODAL
-  ═══════════════════════════════════════════════════════════ -->
-  <div id="fs-rest-picker" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:flex-end;justify-content:center">
-    <div style="background:var(--bg2);border-radius:24px 24px 0 0;padding:24px 20px 36px;width:100%;max-width:430px;border-top:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <span style="font-weight:800;font-size:16px">⏱ Temporizador de descanso</span>
-        <button onclick="closeFsRestPicker()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1">✕</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px">
-        <button onclick="setFsRestTime(30)"  class="rest-preset-btn">30s</button>
-        <button onclick="setFsRestTime(45)"  class="rest-preset-btn">45s</button>
-        <button onclick="setFsRestTime(60)"  class="rest-preset-btn">60s</button>
-        <button onclick="setFsRestTime(90)"  class="rest-preset-btn">90s</button>
-        <button onclick="setFsRestTime(120)" class="rest-preset-btn" style="grid-column:span 2">2 min</button>
-        <button onclick="setFsRestTime(180)" class="rest-preset-btn" style="grid-column:span 2">3 min</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-        <input type="number" id="fs-rest-custom" placeholder="Personalizado (seg)" min="5" max="600"
-          style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none">
-        <button onclick="setFsRestTimeCustom()" style="background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:11px 18px;font-weight:700;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">OK</button>
-      </div>
-      <button onclick="startFsRestNow()" style="width:100%;background:linear-gradient(135deg,var(--accent),#00b37a);color:var(--bg);border:none;border-radius:14px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;font-family:'DM Sans',sans-serif">
-        ▶ Iniciar descanso ahora
-      </button>
-    </div>
-  </div>
-
 </div><!-- /app -->
 
 <script>
@@ -2003,17 +1947,11 @@ let fsLog = [];          // registered exercises this session
 let fsSeries = [];       // current series being built [{weight, reps}]
 let fsTimerInterval = null;
 let fsSeconds = 0;
-let fsRestInterval = null;
-let fsRestSecs = 60;
 
 function openFreeStyle() {
   fsLog = [];
   fsSeries = [{weight:'', reps:''}];
   fsSeconds = 0;
-  fsRestSecs = 60;
-  clearInterval(fsRestInterval);
-  document.getElementById('fs-rest-banner').style.display = 'none';
-  document.getElementById('fs-rest-label').textContent = '60s';
   document.getElementById('fs-session-name').value = 'Entreno libre';
   document.getElementById('fs-session-note').value = '';
   document.getElementById('fs-ex-note').value = '';
@@ -2042,75 +1980,9 @@ function openFreeStyle() {
 
 function closeFreeStyle() {
   clearInterval(fsTimerInterval);
-  clearInterval(fsRestInterval);
-  document.getElementById('fs-rest-banner').style.display = 'none';
-  document.getElementById('fs-rest-picker').style.display = 'none';
   document.getElementById('freestyle').style.display = 'none';
   document.getElementById('nav').style.display = 'grid';
   document.getElementById('fab').style.display = 'flex';
-}
-
-
-// ════════════════════════════════════════════════════════════
-// FREESTYLE REST TIMER
-// ════════════════════════════════════════════════════════════
-function openFsRestPicker() {
-  const picker = document.getElementById('fs-rest-picker');
-  picker.style.display = 'flex';
-}
-
-function closeFsRestPicker() {
-  document.getElementById('fs-rest-picker').style.display = 'none';
-}
-
-function setFsRestTime(secs) {
-  fsRestSecs = secs;
-  document.getElementById('fs-rest-label').textContent = secs >= 60 ? (secs/60) + ' min' : secs + 's';
-  // Highlight selected preset
-  document.querySelectorAll('.rest-preset-btn').forEach(btn => {
-    btn.style.background = 'var(--bg)';
-    btn.style.color = 'var(--text)';
-    btn.style.borderColor = 'var(--border)';
-  });
-  event.target.style.background = 'var(--accent-dim)';
-  event.target.style.color = 'var(--accent)';
-  event.target.style.borderColor = 'var(--accent)';
-}
-
-function setFsRestTimeCustom() {
-  const val = parseInt(document.getElementById('fs-rest-custom').value);
-  if (!val || val < 5) return;
-  fsRestSecs = val;
-  document.getElementById('fs-rest-label').textContent = val >= 60 ? Math.round(val/60) + ' min' : val + 's';
-}
-
-function startFsRestNow() {
-  closeFsRestPicker();
-  startFsRestTimer(fsRestSecs);
-}
-
-function cancelFsRest() {
-  clearInterval(fsRestInterval);
-  document.getElementById('fs-rest-banner').style.display = 'none';
-}
-
-function startFsRestTimer(secs) {
-  clearInterval(fsRestInterval);
-  const banner = document.getElementById('fs-rest-banner');
-  const count = document.getElementById('fs-rest-count');
-  let remaining = secs;
-  banner.style.display = 'block';
-  count.textContent = remaining;
-  fsRestInterval = setInterval(() => {
-    remaining--;
-    count.textContent = remaining;
-    if (remaining <= 0) {
-      clearInterval(fsRestInterval);
-      banner.style.display = 'none';
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      showToast('⏱ ¡Descanso terminado!');
-    }
-  }, 1000);
 }
 
 function renderFsSeriesRows() {
@@ -2193,9 +2065,7 @@ function registerFsExercise() {
   document.getElementById('fs-custom-name').value = '';
   renderFsSeriesRows();
   renderFsLog();
-  showToast(`${exName} registrado ✓`);
-  // Auto-start rest timer
-  startFsRestTimer(fsRestSecs);
+  showToast(`${ex.name} registrado ✓`);
   // Scroll to top of freestyle overlay to see the log
   document.getElementById('freestyle').scrollTo({top:0, behavior:'smooth'});
 }
@@ -2299,7 +2169,7 @@ function renderAll() {
 }
 
 // ════════════════════════════════════════════════════════════
-// GOOGLE DRIVE SYNC
+// GOOGLE DRIVE SYNC (con renovación automática de token)
 // ════════════════════════════════════════════════════════════
 const DRIVE_CLIENT_ID = '253595180832-1gt0tt9jetcf4ba8svvo66h7qd2j20cq.apps.googleusercontent.com';
 const DRIVE_FILE_NAME = 'gymtracker-data.json';
@@ -2308,45 +2178,80 @@ const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 let driveToken = null;
 let driveFileId = null;
 let driveAutoSaveTimeout = null;
+let driveTokenClient = null;
+let driveConnected = false;
 
-// Called by Google Identity Services when library is ready
 function initDrive() {
-  const saved = localStorage.getItem('gt_drive_token');
-  if (saved) {
-    driveToken = saved;
-    driveSetConnected(true);
-    driveLoad(false); // silent load on startup
+  const wasConnected = localStorage.getItem('gt_drive_connected');
+  if (wasConnected) {
+    driveConnected = true;
+    driveSetConnected(true, 'Reconectando...');
+    driveRefreshToken(false);
   }
 }
 
+function driveRefreshToken(manual) {
+  if (!window.google || !google.accounts || !google.accounts.oauth2) return;
+  driveTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: DRIVE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    prompt: '',
+    callback: async (resp) => {
+      if (resp.error) {
+        if (manual) showToast('Error al reconectar con Google');
+        driveSetConnected(false);
+        localStorage.removeItem('gt_drive_connected');
+        return;
+      }
+      driveToken = resp.access_token;
+      driveConnected = true;
+      driveSetConnected(true);
+      if (manual) {
+        showToast('Google Drive reconectado');
+        driveSave(false);
+      } else {
+        driveLoad(false);
+      }
+    }
+  });
+  driveTokenClient.requestAccessToken();
+}
+
 function driveSignIn() {
-  const client = google.accounts.oauth2.initTokenClient({
+  if (!window.google || !google.accounts || !google.accounts.oauth2) {
+    showToast('Cargando Google... intenta en un momento');
+    setTimeout(() => driveSignIn(), 1500);
+    return;
+  }
+  driveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: DRIVE_CLIENT_ID,
     scope: DRIVE_SCOPE,
     callback: async (resp) => {
       if (resp.error) { showToast('Error al conectar con Google'); return; }
       driveToken = resp.access_token;
-      localStorage.setItem('gt_drive_token', driveToken);
+      driveConnected = true;
+      localStorage.setItem('gt_drive_connected', '1');
       driveSetConnected(true);
-      showToast('✅ Google Drive conectado');
-      // Try to load existing data first, then save current
+      showToast('Google Drive conectado');
       const loaded = await driveLoad(false);
       if (!loaded) driveSave(false);
     }
   });
-  client.requestAccessToken();
+  driveTokenClient.requestAccessToken();
 }
 
 function driveSignOut() {
   if (driveToken) google.accounts.oauth2.revoke(driveToken, () => {});
   driveToken = null;
   driveFileId = null;
-  localStorage.removeItem('gt_drive_token');
+  driveTokenClient = null;
+  driveConnected = false;
+  localStorage.removeItem('gt_drive_connected');
   driveSetConnected(false);
   showToast('Desconectado de Google Drive');
 }
 
-function driveSetConnected(connected) {
+function driveSetConnected(connected, customText) {
   const dot = document.getElementById('drive-status-dot');
   const txt = document.getElementById('drive-status-text');
   const btnConnect = document.getElementById('drive-btn-connect');
@@ -2354,7 +2259,7 @@ function driveSetConnected(connected) {
   if (!dot) return;
   if (connected) {
     dot.style.background = 'var(--accent)';
-    txt.textContent = 'Conectado · Sincronización automática';
+    txt.textContent = customText || 'Conectado - Guardado automatico';
     btnConnect.style.display = 'none';
     btnConnected.style.display = 'block';
   } else {
@@ -2365,73 +2270,93 @@ function driveSetConnected(connected) {
   }
 }
 
-async function driveFindFile() {
-  if (!driveToken) return null;
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id,name)`,
-    { headers: { Authorization: `Bearer ${driveToken}` } }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.files && data.files.length > 0 ? data.files[0].id : null;
+async function driveEnsureToken() {
+  if (!driveToken && driveConnected && window.google && google.accounts && google.accounts.oauth2) {
+    await new Promise(resolve => {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: DRIVE_CLIENT_ID,
+        scope: DRIVE_SCOPE,
+        prompt: '',
+        callback: (resp) => {
+          if (!resp.error) driveToken = resp.access_token;
+          resolve();
+        }
+      });
+      client.requestAccessToken();
+    });
+  }
+  return !!driveToken;
 }
 
-async function driveSave(manual = false) {
-  if (!driveToken) return;
-  const payload = JSON.stringify({ workouts, routines, profile, savedAt: new Date().toISOString() });
+async function driveFindFile() {
+  if (!driveToken) return null;
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id,name)`,
+      { headers: { Authorization: `Bearer ${driveToken}` } }
+    );
+    if (res.status === 401) { driveToken = null; return null; }
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.files && data.files.length > 0 ? data.files[0].id : null;
+  } catch(e) { return null; }
+}
+
+async function driveSave(manual) {
+  manual = manual || false;
+  const hasToken = await driveEnsureToken();
+  if (!hasToken) return;
+  const payload = JSON.stringify({ workouts: workouts, routines: routines, profile: profile, savedAt: new Date().toISOString() });
   try {
     if (!driveFileId) driveFileId = await driveFindFile();
     if (driveFileId) {
-      // Update existing file
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files/' + driveFileId + '?uploadType=media', {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: 'Bearer ' + driveToken, 'Content-Type': 'application/json' },
         body: payload
       });
+      if (res.status === 401) { driveToken = null; driveRefreshToken(false); return; }
     } else {
-      // Create new file in appDataFolder
       const meta = JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'] });
       const form = new FormData();
       form.append('metadata', new Blob([meta], {type:'application/json'}));
       form.append('file', new Blob([payload], {type:'application/json'}));
       const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${driveToken}` },
+        headers: { Authorization: 'Bearer ' + driveToken },
         body: form
       });
+      if (res.status === 401) { driveToken = null; driveRefreshToken(false); return; }
       const data = await res.json();
       driveFileId = data.id;
     }
     const txt = document.getElementById('drive-status-text');
-    if (txt) txt.textContent = 'Guardado en Drive · ' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'});
-    if (manual) showToast('☁️ Guardado en Google Drive');
+    if (txt) txt.textContent = 'Guardado ' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'});
+    if (manual) showToast('Guardado en Google Drive');
   } catch(e) {
     if (manual) showToast('Error al guardar en Drive');
-    // Token may have expired
-    if (e.message && e.message.includes('401')) {
-      driveToken = null;
-      localStorage.removeItem('gt_drive_token');
-      driveSetConnected(false);
-    }
   }
 }
 
-async function driveLoad(manual = false) {
-  if (!driveToken) return false;
+async function driveLoad(manual) {
+  manual = manual || false;
+  const hasToken = await driveEnsureToken();
+  if (!hasToken) return false;
   try {
     if (!driveFileId) driveFileId = await driveFindFile();
-    if (!driveFileId) { if (manual) showToast('No hay datos en Drive todavía'); return false; }
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
-      headers: { Authorization: `Bearer ${driveToken}` }
+    if (!driveFileId) { if (manual) showToast('No hay datos en Drive todavia'); return false; }
+    const res = await fetch('https://www.googleapis.com/drive/v3/files/' + driveFileId + '?alt=media', {
+      headers: { Authorization: 'Bearer ' + driveToken }
     });
+    if (res.status === 401) { driveToken = null; driveRefreshToken(false); return false; }
     if (!res.ok) return false;
     const data = await res.json();
     if (data.workouts) workouts = data.workouts;
     if (data.routines) routines = data.routines;
     if (data.profile) profile = data.profile;
-    save(); // sync to localStorage too
+    save();
     renderAll();
-    if (manual) showToast('⬇️ Datos restaurados desde Drive');
+    if (manual) showToast('Datos restaurados desde Drive');
     return true;
   } catch(e) {
     if (manual) showToast('Error al cargar desde Drive');
@@ -2439,19 +2364,19 @@ async function driveLoad(manual = false) {
   }
 }
 
-// Auto-save after every workout save — hook into existing save()
+// Intercept save() to auto-sync to Drive debounced 2s
 const _origSave = save;
 save = function() {
   _origSave();
-  // Debounce: wait 2s after last change before saving to Drive
-  clearTimeout(driveAutoSaveTimeout);
-  driveAutoSaveTimeout = setTimeout(() => driveSave(false), 2000);
+  if (driveConnected) {
+    clearTimeout(driveAutoSaveTimeout);
+    driveAutoSaveTimeout = setTimeout(function() { driveSave(false); }, 2000);
+  }
 };
 
 // Init Drive when GIS library loads
-window.addEventListener('load', () => {
-  // Wait for GIS to load
-  const waitForGIS = setInterval(() => {
+window.addEventListener('load', function() {
+  const waitForGIS = setInterval(function() {
     if (window.google && google.accounts && google.accounts.oauth2) {
       clearInterval(waitForGIS);
       initDrive();
