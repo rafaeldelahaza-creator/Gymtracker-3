@@ -490,6 +490,11 @@
             </div>
             <button onclick="driveSignOut()" style="width:100%;margin-top:8px;background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;padding:4px">Desconectar cuenta</button>
           </div>
+          <div id="drive-btn-reconnect" style="display:none">
+            <button onclick="driveSignIn()" style="width:100%;background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);color:var(--yellow);border-radius:12px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif">
+              🔄 Reconectar con Google
+            </button>
+          </div>
         </div>
         <div style="margin-top:8px;padding:10px;text-align:center">
           <p style="font-size:11px;color:var(--text3)">GymTracker Pro · 42 ejercicios · Sin cuenta obligatoria</p>
@@ -2188,22 +2193,43 @@ let driveConnected = false;
 
 function initDrive() {
   const wasConnected = localStorage.getItem('gt_drive_connected');
-  if (wasConnected) {
-    driveConnected = true;
-    driveSetConnected(true, 'Reconectando...');
-    driveRefreshToken(false);
-  }
+  if (!wasConnected) return;
+  driveConnected = true;
+  // Try silent token refresh on startup using prompt:none (no popup)
+  if (!window.google || !google.accounts || !google.accounts.oauth2) return;
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: DRIVE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    prompt: 'none',
+    callback: async (resp) => {
+      if (resp.error) {
+        // Silent refresh failed - show reconnect button, don't popup
+        driveSetConnected(false, 'Sesion expirada - pulsa Reconectar');
+        document.getElementById('drive-btn-connect').style.display = 'none';
+        document.getElementById('drive-btn-reconnect').style.display = 'block';
+        document.getElementById('drive-btn-connected').style.display = 'none';
+        return;
+      }
+      driveToken = resp.access_token;
+      driveSetConnected(true);
+      driveLoad(false);
+    }
+  });
+  driveSetConnected(true, 'Conectando...');
+  client.requestAccessToken();
 }
 
 function driveRefreshToken(manual) {
+  // Only refresh when user explicitly requests it (manual=true)
+  // Never auto-popup on Firefox/mobile as it creates permission dialogs
+  if (!manual) return;
   if (!window.google || !google.accounts || !google.accounts.oauth2) return;
   driveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: DRIVE_CLIENT_ID,
     scope: DRIVE_SCOPE,
-    prompt: '',
     callback: async (resp) => {
       if (resp.error) {
-        if (manual) showToast('Error al reconectar con Google');
+        showToast('Error al reconectar con Google');
         driveSetConnected(false);
         localStorage.removeItem('gt_drive_connected');
         return;
@@ -2211,12 +2237,8 @@ function driveRefreshToken(manual) {
       driveToken = resp.access_token;
       driveConnected = true;
       driveSetConnected(true);
-      if (manual) {
-        showToast('Google Drive reconectado');
-        driveSave(false);
-      } else {
-        driveLoad(false);
-      }
+      showToast('Google Drive reconectado');
+      driveSave(false);
     }
   });
   driveTokenClient.requestAccessToken();
@@ -2243,6 +2265,17 @@ function driveSignIn() {
     }
   });
   driveTokenClient.requestAccessToken();
+}
+
+function driveShowReconnect() {
+  driveToken = null;
+  const txt = document.getElementById('drive-status-text');
+  if (txt) txt.textContent = 'Sesion expirada - pulsa Reconectar';
+  const dot = document.getElementById('drive-status-dot');
+  if (dot) dot.style.background = 'var(--yellow)';
+  document.getElementById('drive-btn-connect').style.display = 'none';
+  document.getElementById('drive-btn-connected').style.display = 'none';
+  document.getElementById('drive-btn-reconnect').style.display = 'block';
 }
 
 function driveSignOut() {
@@ -2276,20 +2309,8 @@ function driveSetConnected(connected, customText) {
 }
 
 async function driveEnsureToken() {
-  if (!driveToken && driveConnected && window.google && google.accounts && google.accounts.oauth2) {
-    await new Promise(resolve => {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: DRIVE_CLIENT_ID,
-        scope: DRIVE_SCOPE,
-        prompt: '',
-        callback: (resp) => {
-          if (!resp.error) driveToken = resp.access_token;
-          resolve();
-        }
-      });
-      client.requestAccessToken();
-    });
-  }
+  // Only use existing token - never auto-popup
+  // If token expired, mark as needing reconnect but don't interrupt user
   return !!driveToken;
 }
 
@@ -2320,7 +2341,7 @@ async function driveSave(manual) {
         headers: { Authorization: 'Bearer ' + driveToken, 'Content-Type': 'application/json' },
         body: payload
       });
-      if (res.status === 401) { driveToken = null; driveRefreshToken(false); return; }
+      if (res.status === 401) { driveToken = null; driveShowReconnect(); return; }
     } else {
       const meta = JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'] });
       const form = new FormData();
@@ -2331,7 +2352,7 @@ async function driveSave(manual) {
         headers: { Authorization: 'Bearer ' + driveToken },
         body: form
       });
-      if (res.status === 401) { driveToken = null; driveRefreshToken(false); return; }
+      if (res.status === 401) { driveToken = null; driveShowReconnect(); return; }
       const data = await res.json();
       driveFileId = data.id;
     }
@@ -2353,7 +2374,7 @@ async function driveLoad(manual) {
     const res = await fetch('https://www.googleapis.com/drive/v3/files/' + driveFileId + '?alt=media', {
       headers: { Authorization: 'Bearer ' + driveToken }
     });
-    if (res.status === 401) { driveToken = null; driveRefreshToken(false); return false; }
+    if (res.status === 401) { driveToken = null; driveShowReconnect(); return false; }
     if (!res.ok) return false;
     const data = await res.json();
     if (data.workouts) workouts = data.workouts;
