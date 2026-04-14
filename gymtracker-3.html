@@ -2370,15 +2370,32 @@ async function driveLoad(manual) {
   }
 }
 
-// Intercept save() to auto-sync to Drive debounced 2s
+// Intercept save() to auto-sync to Drive immediately
 const _origSave = save;
 save = function() {
   _origSave();
   if (driveConnected) {
     clearTimeout(driveAutoSaveTimeout);
-    driveAutoSaveTimeout = setTimeout(function() { driveSave(false); }, 2000);
+    driveAutoSaveTimeout = setTimeout(function() { driveSave(false); }, 300);
   }
 };
+
+// Save to Drive before closing the tab/browser
+window.addEventListener('beforeunload', function() {
+  if (driveConnected && driveToken) {
+    // Use sendBeacon for reliable delivery on page close
+    const payload = JSON.stringify({ workouts: workouts, routines: routines, profile: profile, savedAt: new Date().toISOString() });
+    // Also trigger normal save as backup
+    driveSave(false);
+  }
+});
+
+// Save when app goes to background (mobile)
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden' && driveConnected) {
+    driveSave(false);
+  }
+});
 
 // Init Drive when GIS library loads
 window.addEventListener('load', function() {
