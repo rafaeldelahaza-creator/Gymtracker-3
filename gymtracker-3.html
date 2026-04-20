@@ -1430,11 +1430,11 @@ function renderLoggerSets() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         <div>
           <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">PESO (kg)</label>
-          <input class="mini-input" type="number" placeholder="${last?last.weight:0}" value="${s.weight}" onchange="updateLoggerSet(${i},'weight',this.value)">
+          <input class="mini-input" type="number" placeholder="${last?last.weight:0}" value="${s.weight}" oninput="updateLoggerSet(${i},'weight',this.value)" id="ls-weight-${i}">
         </div>
         <div>
           <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">REPS OBJETIVO</label>
-          <input class="mini-input" type="number" value="${s.reps}" onchange="updateLoggerSet(${i},'reps',this.value)">
+          <input class="mini-input" type="number" value="${s.reps}" oninput="updateLoggerSet(${i},'reps',this.value)" id="ls-reps-${i}">
         </div>
       </div>
       <button onclick="toggleSetDone(${i})" style="width:100%;background:${s.done?'rgba(0,229,160,.1)':'var(--accent)'};color:${s.done?'var(--accent)':'var(--bg)'};border:${s.done?'1px solid rgba(0,229,160,.3)':'none'};border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;transition:all .2s">
@@ -1448,9 +1448,16 @@ function updateLoggerSet(i,field,val) { loggerSets[i][field]=field==='weight'?va
 function removeLoggerSet(i) { loggerSets.splice(i,1); renderLoggerSets(); }
 
 function toggleSetDone(i) {
+  // Leer valores actuales del DOM por si el foco no se había perdido aún
+  const wEl = document.getElementById(`ls-weight-${i}`);
+  const rEl = document.getElementById(`ls-reps-${i}`);
+  if (wEl && wEl.value !== '') loggerSets[i].weight = wEl.value;
+  if (rEl && rEl.value !== '') loggerSets[i].reps = Number(rEl.value);
+
   loggerSets[i].done = !loggerSets[i].done;
+  const isDone = loggerSets[i].done;
   renderLoggerSets();
-  if (loggerSets[i].done) startRestTimer(loggerSets[i].rest||60);
+  if (isDone) startRestTimer(loggerSets[i].rest||60);
 }
 
 function startRestTimer(secs) {
