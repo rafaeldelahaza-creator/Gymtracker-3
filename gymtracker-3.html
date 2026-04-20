@@ -1281,7 +1281,9 @@ function weOpenCat() {
   catMuscleFilter = 'Todos';
   document.getElementById('cat-search').value = '';
   renderCatChips(); renderCatList();
-  document.getElementById('cat-overlay').style.display = 'block';
+  const overlay = document.getElementById('cat-overlay');
+  overlay.style.display = 'block';
+  overlay.style.zIndex = '600'; // por encima del editor (z-index:400)
 }
 
 function closeWorkoutEditor() {
@@ -1491,7 +1493,9 @@ function openExDetail(id) {
       </div>
       ${showAdd?`<button class="btn-primary" style="width:100%" onclick="addExFromDetail()">+ Añadir al ${catMode==='logger'?'entrenamiento':catMode==='workoutEditor'?'historial':'rutina'}</button>`:''}
     </div>`;
-  document.getElementById('ex-detail-overlay').style.display='block';
+  const detailEl = document.getElementById('ex-detail-overlay');
+  detailEl.style.display = 'block';
+  detailEl.style.zIndex = catMode === 'workoutEditor' ? '700' : '500';
 }
 
 function addExFromDetail() {
@@ -1524,8 +1528,17 @@ function addExFromDetail() {
   }
 }
 
-function closeExDetail() { document.getElementById('ex-detail-overlay').style.display='none'; }
-function closeCatOverlay() { document.getElementById('cat-overlay').style.display='none'; catMode=null; }
+function closeExDetail() {
+  const detailEl = document.getElementById('ex-detail-overlay');
+  detailEl.style.display = 'none';
+  detailEl.style.zIndex = '500';
+}
+function closeCatOverlay() {
+  const overlay = document.getElementById('cat-overlay');
+  overlay.style.display = 'none';
+  overlay.style.zIndex = '400'; // restaurar valor por defecto
+  catMode = null;
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // PERSISTENCIA DE SESIÓN EN CURSO
