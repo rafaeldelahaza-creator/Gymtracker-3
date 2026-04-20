@@ -832,7 +832,12 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 // ═══════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════
-function totalVol(sets) { return sets.reduce((a,s)=> a + (s.weight||0)*s.reps*s.sets, 0); }
+function totalVol(sets) {
+  return sets.reduce((a,s)=> {
+    if (isCardio(s.exerciseId)) return a; // cardio no cuenta en volumen de peso
+    return a + (Number(s.weight)||0) * (Number(s.reps)||0) * (Number(s.sets)||1);
+  }, 0);
+}
 function fmtDate(d) { return new Date(d+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'}); }
 function fmtLong(d) { return new Date(d+'T12:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'long'}); }
 function today() { return new Date().toISOString().slice(0,10); }
@@ -1335,7 +1340,7 @@ function renderProgress() {
   // Muscles this week
   const muscleEl = document.getElementById('prog-muscles');
   const muscleVols = MUSCLES.map(m=>{
-    const vol = thisWeek.reduce((a,w)=>a+w.sets.filter(s=>EXERCISES.find(e=>e.id===s.exerciseId)?.muscle===m).reduce((b,s)=>b+s.weight*s.reps*s.sets,0),0);
+    const vol = thisWeek.reduce((a,w)=>a+w.sets.filter(s=>EXERCISES.find(e=>e.id===s.exerciseId)?.muscle===m).reduce((b,s)=>b+(isCardio(s.exerciseId)?0:(Number(s.weight)||0)*(Number(s.reps)||0)*(Number(s.sets)||1)),0),0);
     return {m, vol};
   }).filter(x=>x.vol>0).sort((a,b)=>b.vol-a.vol);
   const maxMV = Math.max(...muscleVols.map(x=>x.vol),1);
@@ -1365,13 +1370,30 @@ function getWeekWorkouts(weeksAgo) {
 function renderProgressCharts() {
   const exId = document.getElementById('progress-ex-select').value;
   const ex = EXERCISES.find(e=>e.id===exId);
+  const cardio = isCardio(exId);
   document.getElementById('prog-ex-title').textContent = ex ? `${ex.icon} ${ex.name}` : '—';
 
   const exWs = workouts.filter(w=>w.sets.some(s=>s.exerciseId===exId))
     .sort((a,b)=>a.date.localeCompare(b.date));
 
-  const wPts = exWs.map(w=>({ y:Math.max(...w.sets.filter(s=>s.exerciseId===exId).map(s=>s.weight)), lbl:fmtDate(w.date) }));
-  const vPts = exWs.map(w=>({ y:w.sets.filter(s=>s.exerciseId===exId).reduce((a,s)=>a+s.weight*s.reps*s.sets,0), lbl:fmtDate(w.date) }));
+  const wPts = exWs.map(w=>({
+    y: cardio
+      ? w.sets.filter(s=>s.exerciseId===exId).reduce((a,s)=>a+(Number(s.mins)||0),0)
+      : Math.max(...w.sets.filter(s=>s.exerciseId===exId).map(s=>Number(s.weight)||0)),
+    lbl: fmtDate(w.date)
+  }));
+  const vPts = exWs.map(w=>({
+    y: cardio
+      ? w.sets.filter(s=>s.exerciseId===exId).reduce((a,s)=>a+(Number(s.mins)||0),0)
+      : w.sets.filter(s=>s.exerciseId===exId).reduce((a,s)=>a+(Number(s.weight)||0)*(Number(s.reps)||0)*(Number(s.sets)||1),0),
+    lbl: fmtDate(w.date)
+  }));
+
+  const weightLabel = document.querySelector('#prog-weight-chart').previousElementSibling?.previousElementSibling;
+  document.getElementById('prog-weight-chart').previousElementSibling.textContent =
+    cardio ? 'Minutos totales por sesión' : 'Peso máximo por sesión (kg)';
+  document.getElementById('prog-vol-chart').previousElementSibling.textContent =
+    cardio ? 'Minutos acumulados' : 'Series × reps × peso';
 
   document.getElementById('prog-weight-chart').innerHTML = renderLineChart(wPts, '#00E5A0');
   document.getElementById('prog-vol-chart').innerHTML = renderLineChart(vPts, '#FFD166');
@@ -2061,8 +2083,8 @@ function compareWorkout(id) {
   const rows = exIds.map(exId=>{
     const curSets = current.sets.filter(s=>s.exerciseId===exId);
     const prevSets = previous?.sets.filter(s=>s.exerciseId===exId)||[];
-    const curVol = curSets.reduce((a,s)=>a+s.weight*s.reps,0);
-    const prevVol = prevSets.reduce((a,s)=>a+s.weight*s.reps,0);
+    const curVol = curSets.reduce((a,s)=>a+(Number(s.weight)||0)*(Number(s.reps)||0),0);
+    const prevVol = prevSets.reduce((a,s)=>a+(Number(s.weight)||0)*(Number(s.reps)||0),0);
     const curMax = curSets.length?Math.max(...curSets.map(s=>s.weight)):0;
     const prevMax = prevSets.length?Math.max(...prevSets.map(s=>s.weight)):0;
     const diff = curMax-prevMax;
@@ -2180,7 +2202,7 @@ function exportCSV() {
     w.sets.forEach((s,i)=>{
       rows.push([
         w.date, w.name, s.exercise, i+1,
-        s.weight, s.reps, s.weight*s.reps,
+        s.weight, s.reps, (Number(s.weight)||0)*(Number(s.reps)||0),
         i===0?w.duration:'', i===0?w.note:''
       ]);
     });
