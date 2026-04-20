@@ -1336,7 +1336,7 @@ function addExFromDetail() {
     }
     closeExDetail(); closeCatOverlay();
     renderLoggerSets();
-  } else if (catMode==='freestyle') {
+    saveActiveSession();
     // Set the select to this exercise
     const sel = document.getElementById('fs-ex-select');
     if(sel) { sel.value = e.id; }
@@ -1350,6 +1350,116 @@ function addExFromDetail() {
 
 function closeExDetail() { document.getElementById('ex-detail-overlay').style.display='none'; }
 function closeCatOverlay() { document.getElementById('cat-overlay').style.display='none'; catMode=null; }
+
+// ═══════════════════════════════════════════════════════════════════
+// PERSISTENCIA DE SESIÓN EN CURSO
+// ═══════════════════════════════════════════════════════════════════
+function saveActiveSession() {
+  const loggerOpen = document.getElementById('logger').classList.contains('active');
+  const fsOpen = document.getElementById('freestyle').style.display === 'block';
+  if (loggerOpen) {
+    localStorage.setItem('gt_active_session', JSON.stringify({
+      type: 'logger',
+      name: document.getElementById('logger-name').value,
+      notes: document.getElementById('logger-notes').value,
+      sets: loggerSets,
+      startTime: loggerStartTime,
+    }));
+  } else if (fsOpen) {
+    localStorage.setItem('gt_active_session', JSON.stringify({
+      type: 'freestyle',
+      name: document.getElementById('fs-session-name').value,
+      notes: document.getElementById('fs-session-note').value,
+      log: fsLog,
+      startTime: fsStartTime,
+    }));
+  }
+}
+
+function clearActiveSession() {
+  localStorage.removeItem('gt_active_session');
+}
+
+function checkAndRecoverSession() {
+  const raw = localStorage.getItem('gt_active_session');
+  if (!raw) return;
+  let session;
+  try { session = JSON.parse(raw); } catch(e) { clearActiveSession(); return; }
+
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  const elapsed = session.startTime ? Math.floor((Date.now() - session.startTime) / 1000) : 0;
+  const elapsedStr = fmtTime(elapsed);
+  const exercises = session.type === 'logger'
+    ? [...new Set((session.sets||[]).map(s=>s.exercise))].slice(0,3).join(', ')
+    : (session.log||[]).map(e=>e.exercise).slice(0,3).join(', ');
+
+  banner.innerHTML = `
+    <div style="background:var(--bg2);border:2px solid var(--accent);border-radius:24px;padding:28px 22px;max-width:340px;width:100%;text-align:center">
+      <div style="font-size:44px;margin-bottom:8px">⚡</div>
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--accent);letter-spacing:1px;margin-bottom:6px">SESIÓN SIN GUARDAR</h2>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:6px">"${session.name}"</p>
+      ${exercises ? `<p style="color:var(--text3);font-size:12px;margin-bottom:6px">${exercises}${(session.sets||session.log||[]).length > 3 ? '...' : ''}</p>` : ''}
+      <p style="color:var(--yellow);font-size:12px;font-weight:700;margin-bottom:20px">Tiempo transcurrido: ${elapsedStr}</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button id="recover-yes" style="background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--bg);border:none;border-radius:12px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;font-family:'DM Sans',sans-serif">
+          ▶ Retomar sesión
+        </button>
+        <button id="recover-no" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:12px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif">
+          🗑 Descartar y empezar de cero
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(banner);
+
+  document.getElementById('recover-yes').onclick = () => {
+    banner.remove();
+    if (session.type === 'logger') {
+      loggerSets = session.sets || [];
+      loggerStartTime = session.startTime || Date.now();
+      document.getElementById('logger-name').value = session.name || 'Entrenamiento';
+      document.getElementById('logger-notes').value = session.notes || '';
+      loggerSeconds = Math.floor((Date.now() - loggerStartTime) / 1000);
+      document.getElementById('workout-timer').textContent = fmtTime(loggerSeconds);
+      clearInterval(loggerTimerInterval);
+      loggerTimerInterval = setInterval(()=>{
+        loggerSeconds = Math.floor((Date.now() - loggerStartTime) / 1000);
+        document.getElementById('workout-timer').textContent = fmtTime(loggerSeconds);
+      }, 1000);
+      document.getElementById('logger').classList.add('active');
+      document.getElementById('nav').style.display = 'none';
+      document.getElementById('fab').style.display = 'none';
+      renderLoggerSets();
+    } else {
+      fsLog = session.log || [];
+      fsStartTime = session.startTime || Date.now();
+      fsSeries = [{weight:'', reps:''}];
+      fsSeconds = Math.floor((Date.now() - fsStartTime) / 1000);
+      document.getElementById('fs-session-name').value = session.name || 'Entreno libre';
+      document.getElementById('fs-session-note').value = session.notes || '';
+      document.getElementById('fs-timer').textContent = fmtTime(fsSeconds);
+      clearInterval(fsTimerInterval);
+      fsTimerInterval = setInterval(()=>{
+        fsSeconds = Math.floor((Date.now() - fsStartTime) / 1000);
+        document.getElementById('fs-timer').textContent = fmtTime(fsSeconds);
+      }, 1000);
+      const sel = document.getElementById('fs-ex-select');
+      sel.innerHTML = EXERCISES.map(e=>`<option value="${e.id}">${e.name} (${e.muscle})</option>`).join('');
+      setFsTab('cat');
+      document.getElementById('freestyle').style.display = 'block';
+      document.getElementById('nav').style.display = 'none';
+      document.getElementById('fab').style.display = 'none';
+      renderFsSeriesRows();
+      renderFsLog();
+    }
+  };
+
+  document.getElementById('recover-no').onclick = () => {
+    banner.remove();
+    clearActiveSession();
+  };
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // WORKOUT LOGGER
@@ -1388,6 +1498,7 @@ function closeLogger() {
   clearInterval(restInterval);
   loggerStartTime = null;
   restEndTime = null;
+  clearActiveSession();
   document.getElementById('logger').classList.remove('active');
   document.getElementById('nav').style.display='grid';
   document.getElementById('fab').style.display='flex';
@@ -1444,8 +1555,8 @@ function renderLoggerSets() {
   }).join('');
 }
 
-function updateLoggerSet(i,field,val) { loggerSets[i][field]=field==='weight'?val:Number(val); }
-function removeLoggerSet(i) { loggerSets.splice(i,1); renderLoggerSets(); }
+function updateLoggerSet(i,field,val) { loggerSets[i][field]=field==='weight'?val:Number(val); saveActiveSession(); }
+function removeLoggerSet(i) { loggerSets.splice(i,1); renderLoggerSets(); saveActiveSession(); }
 
 function toggleSetDone(i) {
   // Leer valores actuales del DOM por si el foco no se había perdido aún
@@ -1457,6 +1568,7 @@ function toggleSetDone(i) {
   loggerSets[i].done = !loggerSets[i].done;
   const isDone = loggerSets[i].done;
   renderLoggerSets();
+  saveActiveSession();
   if (isDone) startRestTimer(loggerSets[i].rest||60);
 }
 
@@ -1651,6 +1763,7 @@ function saveWorkout() {
     duration: Math.round(loggerSeconds/60),
   });
   save();
+  clearActiveSession();
   closeLogger();
   renderDashboard();
   if(prs.length>0) { setTimeout(()=>showPRCelebration(prs), 400); }
@@ -2106,6 +2219,7 @@ function openFreeStyle() {
 function closeFreeStyle() {
   clearInterval(fsTimerInterval);
   fsStartTime = null;
+  clearActiveSession();
   document.getElementById('freestyle').style.display = 'none';
   document.getElementById('nav').style.display = 'grid';
   document.getElementById('fab').style.display = 'flex';
@@ -2191,7 +2305,8 @@ function registerFsExercise() {
   document.getElementById('fs-custom-name').value = '';
   renderFsSeriesRows();
   renderFsLog();
-  showToast(`${ex.name} registrado ✓`);
+  saveActiveSession();
+  showToast(`${exName} registrado ✓`);
   // Scroll to top of freestyle overlay to see the log
   document.getElementById('freestyle').scrollTo({top:0, behavior:'smooth'});
 }
@@ -2199,6 +2314,7 @@ function registerFsExercise() {
 function removeFsLogEntry(i) {
   fsLog.splice(i,1);
   renderFsLog();
+  saveActiveSession();
 }
 
 function renderFsLog() {
@@ -2269,6 +2385,7 @@ function saveFreeStyle() {
     freestyle: true,
   });
   save();
+  clearActiveSession();
   closeFreeStyle();
   renderDashboard();
   showToast('¡Sesión guardada! 💪');
@@ -2279,11 +2396,11 @@ function saveFreeStyle() {
 // ═══════════════════════════════════════════════════════════════════
 window.addEventListener("DOMContentLoaded", ()=>{
   load();
-  // Only seed example data if Drive is NOT connected and there's no real data
   if (!localStorage.getItem('gt_drive_connected')) {
     seedData();
   }
   renderDashboard();
+  checkAndRecoverSession();
 });
 
 
