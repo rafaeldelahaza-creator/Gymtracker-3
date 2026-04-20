@@ -1386,6 +1386,8 @@ function openLogger(routine) {
 function closeLogger() {
   clearInterval(loggerTimerInterval);
   clearInterval(restInterval);
+  loggerStartTime = null;
+  restEndTime = null;
   document.getElementById('logger').classList.remove('active');
   document.getElementById('nav').style.display='grid';
   document.getElementById('fab').style.display='flex';
@@ -1507,18 +1509,35 @@ function scheduleRestNotification(secs) {
 // When app comes back to foreground, sync timer display immediately
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'visible') {
-    // Resync workout timer instantly
+
+    // --- Workout logger timer: resync display y reinicia intervalo ---
     if (loggerStartTime) {
       loggerSeconds = Math.floor((Date.now() - loggerStartTime) / 1000);
       const el = document.getElementById('workout-timer');
       if (el) el.textContent = fmtTime(loggerSeconds);
+      // Reiniciar el intervalo por si estaba congelado
+      clearInterval(loggerTimerInterval);
+      loggerTimerInterval = setInterval(() => {
+        loggerSeconds = Math.floor((Date.now() - loggerStartTime) / 1000);
+        const el = document.getElementById('workout-timer');
+        if (el) el.textContent = fmtTime(loggerSeconds);
+      }, 1000);
     }
+
+    // --- Freestyle timer: resync display y reinicia intervalo ---
     if (fsStartTime) {
       fsSeconds = Math.floor((Date.now() - fsStartTime) / 1000);
       const el = document.getElementById('fs-timer');
       if (el) el.textContent = fmtTime(fsSeconds);
+      clearInterval(fsTimerInterval);
+      fsTimerInterval = setInterval(() => {
+        fsSeconds = Math.floor((Date.now() - fsStartTime) / 1000);
+        const el = document.getElementById('fs-timer');
+        if (el) el.textContent = fmtTime(fsSeconds);
+      }, 1000);
     }
-    // Resync rest banner if rest is still running
+
+    // --- Rest timer: resync banner o mostrarlo como terminado ---
     if (restEndTime) {
       const remaining = Math.ceil((restEndTime - Date.now()) / 1000);
       const banner = document.getElementById('rest-banner');
@@ -1526,13 +1545,31 @@ document.addEventListener('visibilitychange', function() {
       if (remaining > 0) {
         count.textContent = remaining;
         banner.style.display = 'block';
+        // Reiniciar el intervalo del descanso también
+        clearInterval(restInterval);
+        restInterval = setInterval(() => {
+          const rem = Math.ceil((restEndTime - Date.now()) / 1000);
+          if (rem <= 0) {
+            clearInterval(restInterval);
+            banner.style.display = 'none';
+            restEndTime = null;
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            showToast('⏱ ¡Descanso terminado!');
+          } else {
+            count.textContent = rem;
+          }
+        }, 250);
       } else {
+        // El descanso terminó mientras estábamos fuera
         banner.style.display = 'none';
         restEndTime = null;
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        showToast('⏱ ¡Descanso terminado!');
       }
     }
   }
-  // Drive save on background (existing logic)
+
+  // Drive save al ir a segundo plano
   if (document.visibilityState === 'hidden' && driveConnected) {
     driveSave(false);
   }
@@ -2061,6 +2098,7 @@ function openFreeStyle() {
 
 function closeFreeStyle() {
   clearInterval(fsTimerInterval);
+  fsStartTime = null;
   document.getElementById('freestyle').style.display = 'none';
   document.getElementById('nav').style.display = 'grid';
   document.getElementById('fab').style.display = 'flex';
