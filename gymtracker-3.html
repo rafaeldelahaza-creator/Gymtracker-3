@@ -652,7 +652,7 @@
       <!-- Catalogue mode -->
       <div id="fs-panel-cat" style="margin-bottom:12px">
         <div style="display:flex;gap:8px">
-          <select id="fs-ex-select" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 12px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;appearance:none">
+          <select id="fs-ex-select" onchange="renderFsSeriesRows()" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 12px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;appearance:none">
             <!-- filled by JS -->
           </select>
           <button onclick="openCatForFs()" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;font-size:18px;flex-shrink:0" title="Buscar en catálogo">🔍</button>
@@ -1119,13 +1119,16 @@ function renderHistory() {
         ${w.sets.map(s=>`
           <div class="history-set-row">
             <span style="color:var(--text2);font-size:13px">${s.exercise}</span>
-            <span style="color:var(--text3);font-size:13px">${s.sets}×${s.reps} @ ${s.weight}kg</span>
+            <span style="color:var(--text3);font-size:13px">${isCardio(s.exerciseId) ? `🏃 ${s.mins||0}min${s.level ? ` · Nv.${s.level}` : ''}` : `${s.sets}×${s.reps} @ ${s.weight}kg`}</span>
           </div>`).join('')}
       </div>
       ${w.note?`<p style="font-size:12px;color:var(--text3);margin-top:8px;font-style:italic">"${w.note}"</p>`:''}
       <div style="display:flex;gap:8px;margin-top:10px">
         <button onclick="repeatWorkout('${w.id}')" style="flex:1;background:var(--accent-dim);border:1px solid rgba(0,229,160,.2);color:var(--accent);border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">
-          🔁 Repetir sesión
+          🔁 Repetir
+        </button>
+        <button onclick="openWorkoutEditor('${w.id}')" style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">
+          ✏️ Editar
         </button>
         <button onclick="compareWorkout('${w.id}')" style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">
           📊 Comparar
@@ -1139,6 +1142,170 @@ function deleteWorkout(id) {
   if (!confirm('¿Eliminar este entrenamiento?')) return;
   workouts = workouts.filter(w=>w.id!==id);
   save(); renderHistory(); renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// WORKOUT EDITOR (historial)
+// ═══════════════════════════════════════════════════════════════════
+let editingWorkoutId = null;
+let editingWorkoutSets = [];
+
+function openWorkoutEditor(id) {
+  const w = workouts.find(x => x.id === id);
+  if (!w) return;
+  editingWorkoutId = id;
+  editingWorkoutSets = w.sets.map(s => ({...s}));
+
+  const overlay = document.createElement('div');
+  overlay.id = 'workout-editor-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:400;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:40px;max-width:430px;margin:0 auto;';
+
+  overlay.innerHTML = `
+    <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--bg);z-index:10">
+      <button onclick="closeWorkoutEditor()" style="background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700">✕ Cancelar</button>
+      <span style="font-weight:700;font-size:15px">✏️ Editar sesión</span>
+      <button onclick="saveWorkoutEdit()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--bg);border:none;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">Guardar</button>
+    </div>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">NOMBRE DE LA SESIÓN</label>
+        <input type="text" id="we-name" value="${w.name}" style="margin-top:5px;width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">FECHA</label>
+          <input type="date" id="we-date" value="${w.date}" style="margin-top:5px;width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">DURACIÓN (min)</label>
+          <input type="number" id="we-duration" value="${w.duration||''}" placeholder="60" style="margin-top:5px;width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box">
+        </div>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">NOTA</label>
+        <textarea id="we-note" rows="2" placeholder="Sensaciones, observaciones..." style="margin-top:5px;width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;resize:none;box-sizing:border-box">${w.note||''}</textarea>
+      </div>
+    </div>
+    <div style="padding:0 16px">
+      <p style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">SERIES REGISTRADAS</p>
+      <div id="we-sets-list"></div>
+      <button onclick="weOpenCat()" style="width:100%;background:var(--bg2);border:2px dashed var(--border);color:var(--accent);border-radius:12px;padding:13px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;margin-top:4px">+ Añadir ejercicio</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  renderWeSets();
+}
+
+function renderWeSets() {
+  const el = document.getElementById('we-sets-list');
+  if (!el) return;
+  // Group consecutive sets by exercise
+  const groups = [];
+  editingWorkoutSets.forEach((s, i) => {
+    const last = groups[groups.length - 1];
+    if (last && last.exerciseId === s.exerciseId) {
+      last.indices.push(i);
+    } else {
+      groups.push({ exerciseId: s.exerciseId, exercise: s.exercise, indices: [i] });
+    }
+  });
+
+  el.innerHTML = groups.map(g => {
+    const cardio = isCardio(g.exerciseId);
+    const rows = g.indices.map(i => {
+      const s = editingWorkoutSets[i];
+      return cardio ? `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:11px;color:var(--text3);width:36px;flex-shrink:0">🏃</span>
+          <div style="flex:1">
+            <input class="mini-input" type="number" value="${s.mins||''}" placeholder="min"
+              oninput="editingWorkoutSets[${i}].mins=Number(this.value)" style="text-align:center">
+            <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px">MIN</div>
+          </div>
+          <span style="color:var(--text3)">·</span>
+          <div style="flex:1">
+            <input class="mini-input" type="number" value="${s.level||''}" placeholder="nv" step="0.1"
+              oninput="editingWorkoutSets[${i}].level=Number(this.value)" style="text-align:center">
+            <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px">NIVEL</div>
+          </div>
+          <button onclick="weRemoveSet(${i})" style="background:none;border:none;color:var(--red);opacity:.5;cursor:pointer;font-size:15px;padding:4px;flex-shrink:0">✕</button>
+        </div>` : `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:11px;color:var(--text3);width:36px;flex-shrink:0">S${g.indices.indexOf(i)+1}</span>
+          <div style="flex:1">
+            <input class="mini-input" type="number" value="${s.weight||''}" placeholder="kg"
+              oninput="editingWorkoutSets[${i}].weight=Number(this.value)" style="text-align:center">
+            <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px">KG</div>
+          </div>
+          <span style="color:var(--text3)">×</span>
+          <div style="flex:1">
+            <input class="mini-input" type="number" value="${s.reps||''}" placeholder="reps"
+              oninput="editingWorkoutSets[${i}].reps=Number(this.value)" style="text-align:center">
+            <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px">REPS</div>
+          </div>
+          <button onclick="weRemoveSet(${i})" style="background:none;border:none;color:var(--red);opacity:.5;cursor:pointer;font-size:15px;padding:4px;flex-shrink:0">✕</button>
+        </div>`;
+    }).join('');
+
+    return `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-weight:700;font-size:14px">${g.exercise}</span>
+          <button onclick="weAddSet('${g.exerciseId}','${g.exercise}',${g.indices[g.indices.length-1]})" 
+            style="background:var(--accent-dim);border:1px solid rgba(0,229,160,.2);color:var(--accent);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">
+            + Serie
+          </button>
+        </div>
+        ${rows}
+      </div>`;
+  }).join('');
+}
+
+function weRemoveSet(i) {
+  editingWorkoutSets.splice(i, 1);
+  renderWeSets();
+}
+
+function weAddSet(exerciseId, exerciseName, afterIndex) {
+  const cardio = isCardio(exerciseId);
+  const newSet = cardio
+    ? { exerciseId, exercise: exerciseName, mins: 0, level: 0, sets: 1, done: true }
+    : { exerciseId, exercise: exerciseName, weight: 0, reps: 10, sets: 1, done: true };
+  editingWorkoutSets.splice(afterIndex + 1, 0, newSet);
+  renderWeSets();
+}
+
+function weOpenCat() {
+  catMode = 'workoutEditor';
+  document.getElementById('cat-overlay-title').textContent = 'Añadir ejercicio';
+  catMuscleFilter = 'Todos';
+  document.getElementById('cat-search').value = '';
+  renderCatChips(); renderCatList();
+  document.getElementById('cat-overlay').style.display = 'block';
+}
+
+function closeWorkoutEditor() {
+  document.getElementById('workout-editor-overlay')?.remove();
+  editingWorkoutId = null;
+  editingWorkoutSets = [];
+}
+
+function saveWorkoutEdit() {
+  const idx = workouts.findIndex(w => w.id === editingWorkoutId);
+  if (idx < 0) return;
+  workouts[idx] = {
+    ...workouts[idx],
+    name: document.getElementById('we-name').value.trim() || workouts[idx].name,
+    date: document.getElementById('we-date').value || workouts[idx].date,
+    duration: Number(document.getElementById('we-duration').value) || workouts[idx].duration,
+    note: document.getElementById('we-note').value,
+    sets: editingWorkoutSets,
+  };
+  save();
+  closeWorkoutEditor();
+  renderHistory();
+  renderDashboard();
+  showToast('Sesión actualizada ✓');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1322,7 +1489,7 @@ function openExDetail(id) {
         <p style="font-size:11px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">💡 CONSEJOS</p>
         <p style="color:var(--text2);font-size:14px;line-height:1.6">${e.tips}</p>
       </div>
-      ${showAdd?`<button class="btn-primary" style="width:100%" onclick="addExFromDetail()">+ Añadir al ${catMode==='logger'?'entrenamiento':'rutina'}</button>`:''}
+      ${showAdd?`<button class="btn-primary" style="width:100%" onclick="addExFromDetail()">+ Añadir al ${catMode==='logger'?'entrenamiento':catMode==='workoutEditor'?'historial':'rutina'}</button>`:''}
     </div>`;
   document.getElementById('ex-detail-overlay').style.display='block';
 }
@@ -1337,14 +1504,23 @@ function addExFromDetail() {
     closeExDetail(); closeCatOverlay();
     renderLoggerSets();
     saveActiveSession();
-    // Set the select to this exercise
+  } else if (catMode==='freestyle') {
     const sel = document.getElementById('fs-ex-select');
     if(sel) { sel.value = e.id; }
     closeExDetail(); closeCatOverlay();
+    renderFsSeriesRows();
   } else if (catMode==='routine') {
     editingRoutineExercises.push({exerciseId:e.id, name:e.name, sets:3, reps:10, rest:90});
     closeExDetail(); closeCatOverlay();
     renderRoutineExList();
+  } else if (catMode==='workoutEditor') {
+    const cardio = isCardio(e.id);
+    const newSet = cardio
+      ? {exerciseId:e.id, exercise:e.name, mins:0, level:0, sets:1, done:true}
+      : {exerciseId:e.id, exercise:e.name, weight:0, reps:10, sets:1, done:true};
+    editingWorkoutSets.push(newSet);
+    closeExDetail(); closeCatOverlay();
+    renderWeSets();
   }
 }
 
@@ -1505,12 +1681,21 @@ function closeLogger() {
   document.getElementById('rest-banner').style.display='none';
 }
 
+function isCardio(exerciseId) {
+  if (!exerciseId) return false;
+  const ex = EXERCISES.find(e => e.id === exerciseId);
+  return ex?.muscle === 'Cardio';
+}
+
 function getLastExData(exerciseId) {
   const past = [...workouts]
     .sort((a,b)=>b.date.localeCompare(a.date))
     .find(w=>w.sets.some(s=>s.exerciseId===exerciseId));
   if(!past) return null;
   const sets = past.sets.filter(s=>s.exerciseId===exerciseId);
+  if (isCardio(exerciseId)) {
+    return { date: fmtDate(past.date), mins: sets[0]?.mins||0, level: sets[0]?.level||0, cardio: true };
+  }
   const maxW = Math.max(...sets.map(s=>s.weight));
   return { date: fmtDate(past.date), weight: maxW, reps: sets[0]?.reps||0 };
 }
@@ -1525,31 +1710,52 @@ function renderLoggerSets() {
     const showHeader = i===0 || loggerSets[i-1].exercise!==s.exercise;
     const serieLabel = s.totalSeries ? `Serie ${s.serieNum} / ${s.totalSeries}` : 'Serie';
     const last = showHeader ? getLastExData(s.exerciseId) : null;
+    const cardio = isCardio(s.exerciseId);
+
+    const lastInfo = last
+      ? (last.cardio
+          ? `<span style="font-size:11px;color:var(--text3)">Último: <b style="color:var(--accent)">${last.mins}min · Nv.${last.level}</b> (${last.date})</span>`
+          : `<span style="font-size:11px;color:var(--text3)">Último: <b style="color:var(--accent)">${last.weight}kg × ${last.reps}</b> (${last.date})</span>`)
+      : `<span style="font-size:11px;color:var(--text3)">Sin historial</span>`;
+
+    const inputFields = cardio ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">MINUTOS</label>
+          <input class="mini-input" type="number" placeholder="${last?.mins||20}" value="${s.mins||''}" oninput="updateLoggerSet(${i},'mins',this.value)" id="ls-weight-${i}">
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">NIVEL / VELOC.</label>
+          <input class="mini-input" type="number" step="0.1" placeholder="${last?.level||5}" value="${s.level||''}" oninput="updateLoggerSet(${i},'level',this.value)" id="ls-reps-${i}">
+        </div>
+      </div>` : `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">PESO (kg)</label>
+          <input class="mini-input" type="number" placeholder="${last?last.weight:0}" value="${s.weight||''}" oninput="updateLoggerSet(${i},'weight',this.value)" id="ls-weight-${i}">
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">REPS OBJETIVO</label>
+          <input class="mini-input" type="number" value="${s.reps||''}" oninput="updateLoggerSet(${i},'reps',this.value)" id="ls-reps-${i}">
+        </div>
+      </div>`;
+
     return `
     ${showHeader ? `
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin:${i===0?0:16}px 0 6px">
         <p style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:0">${s.exercise}</p>
-        ${last ? `<span style="font-size:11px;color:var(--text3)">Último: <b style="color:var(--accent)">${last.weight}kg × ${last.reps}</b> (${last.date})</span>` : `<span style="font-size:11px;color:var(--text3)">Sin historial</span>`}
+        ${lastInfo}
       </div>` : ''}
     <div class="set-card ${s.done?'done':''}" style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:13px;color:${s.done?'var(--accent)':'var(--text2)'}">
-          ${s.done?'✓':''} ${serieLabel}
+          ${s.done?'✓':''} ${cardio ? '🏃 Sesión' : serieLabel}
         </span>
         <button style="background:none;border:none;color:var(--red);opacity:.5;cursor:pointer;font-size:15px" onclick="removeLoggerSet(${i})">✕</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-        <div>
-          <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">PESO (kg)</label>
-          <input class="mini-input" type="number" placeholder="${last?last.weight:0}" value="${s.weight}" oninput="updateLoggerSet(${i},'weight',this.value)" id="ls-weight-${i}">
-        </div>
-        <div>
-          <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">REPS OBJETIVO</label>
-          <input class="mini-input" type="number" value="${s.reps}" oninput="updateLoggerSet(${i},'reps',this.value)" id="ls-reps-${i}">
-        </div>
-      </div>
+      ${inputFields}
       <button onclick="toggleSetDone(${i})" style="width:100%;background:${s.done?'rgba(0,229,160,.1)':'var(--accent)'};color:${s.done?'var(--accent)':'var(--bg)'};border:${s.done?'1px solid rgba(0,229,160,.3)':'none'};border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;transition:all .2s">
-        ${s.done?'✓ Completada':'Completar serie'}
+        ${s.done?'✓ Completado':'Completar'}
       </button>
     </div>`;
   }).join('');
@@ -1559,12 +1765,15 @@ function updateLoggerSet(i,field,val) { loggerSets[i][field]=field==='weight'?va
 function removeLoggerSet(i) { loggerSets.splice(i,1); renderLoggerSets(); saveActiveSession(); }
 
 function toggleSetDone(i) {
-  // Leer valores actuales del DOM por si el foco no se había perdido aún
   const wEl = document.getElementById(`ls-weight-${i}`);
   const rEl = document.getElementById(`ls-reps-${i}`);
-  if (wEl && wEl.value !== '') loggerSets[i].weight = wEl.value;
-  if (rEl && rEl.value !== '') loggerSets[i].reps = Number(rEl.value);
-
+  if (isCardio(loggerSets[i].exerciseId)) {
+    if (wEl && wEl.value !== '') loggerSets[i].mins = Number(wEl.value);
+    if (rEl && rEl.value !== '') loggerSets[i].level = Number(rEl.value);
+  } else {
+    if (wEl && wEl.value !== '') loggerSets[i].weight = wEl.value;
+    if (rEl && rEl.value !== '') loggerSets[i].reps = Number(rEl.value);
+  }
   loggerSets[i].done = !loggerSets[i].done;
   const isDone = loggerSets[i].done;
   renderLoggerSets();
@@ -2226,18 +2435,35 @@ function closeFreeStyle() {
 }
 
 function renderFsSeriesRows() {
+  const exId = document.getElementById('fs-ex-select')?.value;
+  const cardio = fsTabMode === 'cat' && isCardio(exId);
   const el = document.getElementById('fs-series-rows');
-  el.innerHTML = fsSeries.map((s,i)=>`
+  el.innerHTML = fsSeries.map((s,i)=> cardio ? `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:11px;color:var(--text3);width:44px;flex-shrink:0;font-weight:700">🏃</span>
+      <div style="flex:1">
+        <input class="mini-input" type="number" placeholder="20" value="${s.mins||''}"
+          oninput="updateFsSerie(${i},'mins',this.value)" style="text-align:center">
+        <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px">MINUTOS</div>
+      </div>
+      <span style="color:var(--text3);font-size:14px">·</span>
+      <div style="flex:1">
+        <input class="mini-input" type="number" step="0.1" placeholder="5" value="${s.level||''}"
+          oninput="updateFsSerie(${i},'level',this.value)" style="text-align:center">
+        <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px">NIVEL/VELOC.</div>
+      </div>
+      ${fsSeries.length>1?`<button onclick="removeFsSerie(${i})" style="background:none;border:none;color:var(--red);opacity:.6;cursor:pointer;font-size:16px;flex-shrink:0;padding:4px">✕</button>`:'<div style="width:24px"></div>'}
+    </div>` : `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <span style="font-size:11px;color:var(--text3);width:44px;flex-shrink:0;font-weight:700">S${i+1}</span>
       <div style="flex:1">
-        <input class="mini-input" type="number" placeholder="kg" value="${s.weight}"
+        <input class="mini-input" type="number" placeholder="kg" value="${s.weight||''}"
           oninput="updateFsSerie(${i},'weight',this.value)" style="text-align:center">
         <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px">PESO</div>
       </div>
       <span style="color:var(--text3);font-size:14px">×</span>
       <div style="flex:1">
-        <input class="mini-input" type="number" placeholder="reps" value="${s.reps}"
+        <input class="mini-input" type="number" placeholder="reps" value="${s.reps||''}"
           oninput="updateFsSerie(${i},'reps',this.value)" style="text-align:center">
         <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px">REPS</div>
       </div>
@@ -2287,20 +2513,31 @@ function registerFsExercise() {
     exMuscle = 'Otro';
   }
 
-  const validSeries = fsSeries.filter(s=> s.reps!=='' && Number(s.reps)>0);
-  if (validSeries.length===0) { showToast('Añade al menos una serie con reps'); return; }
+  const cardio = isCardio(exId);
+
+  let validSeries;
+  if (cardio) {
+    validSeries = fsSeries.filter(s => s.mins !== '' && Number(s.mins) > 0);
+    if (validSeries.length === 0) { showToast('Añade al menos la duración en minutos'); return; }
+  } else {
+    validSeries = fsSeries.filter(s => s.reps !== '' && Number(s.reps) > 0);
+    if (validSeries.length === 0) { showToast('Añade al menos una serie con reps'); return; }
+  }
 
   fsLog.push({
     exerciseId: exId,
     exercise: exName,
     muscle: exMuscle,
+    cardio,
     note: document.getElementById('fs-ex-note').value,
-    series: validSeries.map(s=>({weight:Number(s.weight)||0, reps:Number(s.reps)})),
+    series: cardio
+      ? validSeries.map(s => ({mins: Number(s.mins)||0, level: Number(s.level)||0}))
+      : validSeries.map(s => ({weight: Number(s.weight)||0, reps: Number(s.reps)})),
     time: fmtTime(fsSeconds),
   });
 
-  // Reset panel for next exercise
-  fsSeries = [{weight:'', reps:''}];
+  // Reset panel
+  fsSeries = [{weight:'', reps:'', mins:'', level:''}];
   document.getElementById('fs-ex-note').value = '';
   document.getElementById('fs-custom-name').value = '';
   renderFsSeriesRows();
@@ -2338,10 +2575,15 @@ function renderFsLog() {
         <button onclick="removeFsLogEntry(${i})" style="background:none;border:none;color:var(--red);opacity:.5;cursor:pointer;font-size:14px">✕</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${entry.note?8:0}px">
-        ${entry.series.map((s,si)=>`
-          <span style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12px;color:var(--text2)">
-            S${si+1}: ${s.weight}kg × ${s.reps}
-          </span>`).join('')}
+        ${entry.cardio
+          ? entry.series.map((s,si)=>`
+            <span style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12px;color:var(--text2)">
+              🏃 ${s.mins}min${s.level ? ` · Nv.${s.level}` : ''}
+            </span>`).join('')
+          : entry.series.map((s,si)=>`
+            <span style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12px;color:var(--text2)">
+              S${si+1}: ${s.weight}kg × ${s.reps}
+            </span>`).join('')}
       </div>
       ${entry.note?`<p style="font-size:12px;color:var(--text3);font-style:italic;margin:0">"${entry.note}"</p>`:''}
     </div>`).join('')}`;
