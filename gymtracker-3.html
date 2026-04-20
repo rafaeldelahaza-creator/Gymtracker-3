@@ -2673,28 +2673,39 @@ function initDrive() {
   const wasConnected = localStorage.getItem('gt_drive_connected');
   if (!wasConnected) return;
   driveConnected = true;
-  // Try silent token refresh on startup using prompt:none (no popup)
+  driveSetConnected(true, 'Reconectando...');
+
   if (!window.google || !google.accounts || !google.accounts.oauth2) return;
+
+  const hint = localStorage.getItem('gt_drive_email') || '';
+
   const client = google.accounts.oauth2.initTokenClient({
     client_id: DRIVE_CLIENT_ID,
     scope: DRIVE_SCOPE,
-    prompt: 'none',
+    prompt: '',           // sin prompt — usa sesión existente del navegador
+    hint: hint,           // sugiere la cuenta guardada
     callback: async (resp) => {
       if (resp.error) {
-        // Silent refresh failed - show reconnect button, don't popup
-        driveSetConnected(false, 'Sesion expirada - pulsa Reconectar');
+        // Fallo silencioso — no popup, solo mostrar botón Reconectar
+        driveSetConnected(false, 'Toca "Reconectar" para sincronizar');
         document.getElementById('drive-btn-connect').style.display = 'none';
         document.getElementById('drive-btn-reconnect').style.display = 'block';
         document.getElementById('drive-btn-connected').style.display = 'none';
         return;
       }
       driveToken = resp.access_token;
+      driveConnected = true;
       driveSetConnected(true);
       driveLoad(false);
     }
   });
-  driveSetConnected(true, 'Conectando...');
-  client.requestAccessToken();
+  // requestAccessToken sin interacción de usuario — funciona si hay cookie de Google activa
+  try { client.requestAccessToken({ prompt: '' }); } catch(e) {
+    driveSetConnected(false, 'Toca "Reconectar" para sincronizar');
+    document.getElementById('drive-btn-connect').style.display = 'none';
+    document.getElementById('drive-btn-reconnect').style.display = 'block';
+    document.getElementById('drive-btn-connected').style.display = 'none';
+  }
 }
 
 function driveRefreshToken(manual) {
@@ -2736,6 +2747,13 @@ function driveSignIn() {
       driveToken = resp.access_token;
       driveConnected = true;
       localStorage.setItem('gt_drive_connected', '1');
+      // Guardar email para reconexión silenciosa futura
+      try {
+        const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: 'Bearer ' + resp.access_token }
+        }).then(r => r.json());
+        if (info.email) localStorage.setItem('gt_drive_email', info.email);
+      } catch(e) {}
       driveSetConnected(true);
       showToast('Google Drive conectado');
       const loaded = await driveLoad(false);
@@ -2763,6 +2781,7 @@ function driveSignOut() {
   driveTokenClient = null;
   driveConnected = false;
   localStorage.removeItem('gt_drive_connected');
+  localStorage.removeItem('gt_drive_email');
   driveSetConnected(false);
   showToast('Desconectado de Google Drive');
 }
@@ -2896,11 +2915,72 @@ window.addEventListener('load', function() {
   }, 300);
 });
 
-// PWA Service Worker
+// ═══════════════════════════════════════════════════════════════════
+// PWA SERVICE WORKER — network-first, versioned cache
+// Al cambiar APP_VERSION el SW se reinstala y descarga la nueva versión
+// ═══════════════════════════════════════════════════════════════════
 if ("serviceWorker" in navigator) {
-  const sw = `self.addEventListener("install",e=>self.skipWaiting());self.addEventListener("activate",e=>clients.claim());self.addEventListener("fetch",e=>{e.respondWith(fetch(e.request).catch(()=>new Response("")))});`;
+  const sw = `
+const APP_VERSION = '2.5';
+const CACHE = 'gymtracker-' + APP_VERSION;
+
+// Al instalar: precachear la página principal
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(['./']))
+  );
+  self.skipWaiting();
+});
+
+// Al activar: eliminar caches viejos
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    )
+  );
+  clients.claim();
+});
+
+// Fetch: network-first para el HTML, cache-first para fuentes externas
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  // Recursos externos (Google fonts, APIs) — solo red, sin caché
+  if (!url.origin.includes(self.location.origin)) {
+    e.respondWith(fetch(e.request).catch(() => new Response('')));
+    return;
+  }
+  // HTML propio — siempre intenta red primero, cae a caché si offline
+  e.respondWith(
+    fetch(e.request)
+      .then(resp => {
+        const clone = resp.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return resp;
+      })
+      .catch(() => caches.match(e.request))
+  );
+});`;
   const blob = new Blob([sw], {type:"application/javascript"});
-  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+  const swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl).then(reg => {
+    // Forzar actualización si hay un SW en espera
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      newSW.addEventListener('statechange', () => {
+        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+          // Hay versión nueva lista — recargar automáticamente
+          navigator.serviceWorker.controller.postMessage({type:'SKIP_WAITING'});
+          window.location.reload();
+        }
+      });
+    });
+  }).catch(() => {});
+
+  // Escuchar mensaje SKIP_WAITING desde la página
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SKIP_WAITING') window.location.reload();
+  });
 }
 </script>
 </body>
