@@ -318,8 +318,8 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
             <p style="font-weight:700;font-size:14px;margin:0">Mapa muscular</p>
-            <div style="display:flex;gap:10px;font-size:10px;color:var(--text3)">
-              <span>🟢 Hoy</span><span>🟡 2-3d</span><span>⚫ Desc.</span>
+            <div style="display:flex;gap:8px;font-size:10px;color:var(--text3)">
+              <span>🟢 Hoy</span><span>🟡 2-3d</span><span>🔴 +3d</span><span>⚫ Sin datos</span>
             </div>
           </div>
           <!-- SVG Body + legend side by side -->
@@ -1226,44 +1226,85 @@ function renderDashboard() {
 
   // SVG Body map
   const legendEl = document.getElementById('muscle-map-legend');
-  if(legendEl) {    const now2 = new Date();
-    // Clear all zone opacities first
+  if(legendEl) {
+    const now2 = new Date();
     document.querySelectorAll('.body-zone').forEach(z=>z.setAttribute('opacity','0'));
 
-    const muscleStatus = MUSCLES.map(m=>{
-      const lastW = workouts.filter(w=>w.sets.some(s=>EXERCISES.find(e=>e.id===s.exerciseId)?.muscle===m))
-        .sort((a,b)=>b.date.localeCompare(a.date))[0];
-      let dot='⚫', color='var(--text3)', opacity=0, status='rest';
+    // ── Series semanales recomendadas por músculo (evidencia científica) ──
+    const RECOMMENDED_SETS = {
+      Pecho:    {min:10, max:20},
+      Espalda:  {min:10, max:20},
+      Hombros:  {min:8,  max:16},
+      Bíceps:   {min:8,  max:14},
+      Tríceps:  {min:8,  max:14},
+      Piernas:  {min:10, max:20},
+      Glúteos:  {min:8,  max:16},
+      Core:     {min:6,  max:12},
+      Cardio:   {min:2,  max:5},
+    };
+
+    // ── Calcula series semanales desde tus rutinas activas ──
+    // Usamos las series de todas las rutinas guardadas ponderadas por frecuencia semanal estimada
+    const routineSetsPerMuscle = {};
+    MUSCLES.forEach(m => routineSetsPerMuscle[m] = 0);
+
+    // Contar series por músculo en las rutinas (como si se hicieran todas 1 vez/semana)
+    routines.forEach(r => {
+      r.exercises.forEach(ex => {
+        const muscle = EXERCISES.find(e => e.id === ex.exerciseId)?.muscle;
+        if (muscle && routineSetsPerMuscle[muscle] !== undefined) {
+          routineSetsPerMuscle[muscle] += (ex.sets || ex.seriesReps?.length || 3);
+        }
+      });
+    });
+
+    // ── Estado de recuperación (último entreno real) ──
+    const muscleStatus = MUSCLES.map(m => {
+      const lastW = workouts.filter(w => w.sets.some(s => EXERCISES.find(e=>e.id===s.exerciseId)?.muscle===m))
+        .sort((a,b) => b.date.localeCompare(a.date))[0];
+      let dot='⚫', recoveryColor='var(--text3)', opacity=0, status='rest';
       if(lastW){
-        const daysAgo=(now2-new Date(lastW.date+'T12:00:00'))/(86400000);
-        if(daysAgo<1){dot='🟢';color='var(--accent)';opacity=0.55;status='today';}
-        else if(daysAgo<3){dot='🟡';color='var(--yellow)';opacity=0.35;status='recent';}
-        else{dot='🔴';color='#FF6B6B';opacity=0.18;status='old';}
+        const daysAgo = (now2 - new Date(lastW.date+'T12:00:00')) / 86400000;
+        if(daysAgo<1){dot='🟢';recoveryColor='var(--accent)';opacity=0.55;status='today';}
+        else if(daysAgo<3){dot='🟡';recoveryColor='var(--yellow)';opacity=0.35;status='recent';}
+        else{dot='🔴';recoveryColor='#FF6B6B';opacity=0.18;status='old';}
       }
-      return {m, dot, color, opacity, status};
+      const rec = RECOMMENDED_SETS[m] || {min:8, max:16};
+      const weeklySets = routineSetsPerMuscle[m] || 0;
+      const pct = Math.min(100, Math.round(weeklySets / rec.max * 100));
+      let volumeColor, volumeLabel;
+      if (weeklySets === 0)          { volumeColor='var(--text3)'; volumeLabel='Sin rutina'; }
+      else if (weeklySets < rec.min) { volumeColor='#FF5C6A';      volumeLabel=`Bajo (${weeklySets}/${rec.min}s)`; }
+      else if (weeklySets <= rec.max){ volumeColor='var(--accent)'; volumeLabel=`${weeklySets} series ✓`; }
+      else                           { volumeColor='var(--yellow)'; volumeLabel=`Alto (${weeklySets}s)`; }
+
+      return {m, dot, recoveryColor, opacity, status, weeklySets, pct, volumeColor, volumeLabel, rec};
     });
 
-    // Apply opacity to SVG zones
-    muscleStatus.forEach(({m, opacity})=>{
-      const zones = document.querySelectorAll(`[id^="zone-${m}"]`);
-      zones.forEach(z=>z.setAttribute('opacity', opacity));
+    // Aplicar opacidad al SVG
+    muscleStatus.forEach(({m, opacity}) => {
+      document.querySelectorAll(`[id^="zone-${m}"]`).forEach(z => z.setAttribute('opacity', opacity));
     });
 
-    // Legend list
-    const worked = muscleStatus.filter(x=>x.status!=='rest');
-    legendEl.innerHTML = worked.length === 0
-      ? `<p style="font-size:12px;color:var(--text3)">Sin entrenamientos recientes</p>`
-      : worked.map(({m, dot, color})=>`
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:12px">${dot}</span>
-          <span style="font-size:12px;font-weight:700;color:${color};flex:1">${m}</span>
-        </div>`).join('');
-    // Add resting muscles briefly
-    const resting = muscleStatus.filter(x=>x.status==='rest');
-    if(resting.length > 0) {
-      legendEl.innerHTML += `<div style="margin-top:4px;border-top:1px solid var(--border);padding-top:6px">` +
-        resting.map(({m})=>`<div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px">⚫</span><span style="font-size:11px;color:var(--text3)">${m}</span></div>`).join('') +
-        `</div>`;
+    // ── Leyenda con análisis de volumen ──
+    const hasRoutines = routines.length > 0;
+    legendEl.innerHTML = muscleStatus.filter(x => x.m !== 'Cardio').map(({m, dot, recoveryColor, weeklySets, pct, volumeColor, volumeLabel, rec}) => `
+      <div style="margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
+          <span style="font-size:11px">${dot}</span>
+          <span style="font-size:11px;font-weight:700;color:${recoveryColor};flex:1">${m}</span>
+          <span style="font-size:10px;font-weight:700;color:${volumeColor}">${hasRoutines ? volumeLabel : '—'}</span>
+        </div>
+        ${hasRoutines ? `
+        <div style="background:var(--bg3);border-radius:3px;height:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${volumeColor};border-radius:3px;transition:width .5s ease"></div>
+        </div>
+        <div style="font-size:9px;color:var(--text3);margin-top:1px">Recom: ${rec.min}–${rec.max} series/sem</div>
+        ` : ''}
+      </div>`).join('');
+
+    if (!hasRoutines) {
+      legendEl.innerHTML += `<p style="font-size:10px;color:var(--text3);margin-top:4px">Crea rutinas para ver análisis de volumen</p>`;
     }
   }
 
