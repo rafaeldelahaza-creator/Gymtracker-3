@@ -2167,8 +2167,11 @@ function renderLoggerSets() {
 
     return `
     ${showHeader ? `
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin:${i===0?0:16}px 0 6px">
-        <p style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:0">${s.exercise}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:${i===0?0:16}px 0 6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <p style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:0">${s.exercise}</p>
+          ${s.exerciseId && EXERCISES.find(e=>e.id===s.exerciseId) ? `<button onclick="openExDetailFromLogger('${s.exerciseId}')" style="background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;line-height:1.6">ⓘ</button>` : ''}
+        </div>
         ${lastInfo}
       </div>` : ''}
     <div class="set-card ${s.done?'done':''}" style="margin-bottom:8px">
@@ -2360,13 +2363,14 @@ function openCatForLogger() {
 
 function openExDetailFromLogger(exId) {
   // Open detail overlay in view-only mode (no add button) during workout
-  const prev = catMode;
-  catMode = null;
+  catMode = null; // ensures no "Añadir" button appears
   openExDetail(exId);
-  // Restore catMode after opening so back navigation works
-  const detailEl = document.getElementById('ex-detail-overlay');
-  const origClose = detailEl.dataset.loggerMode;
-  detailEl.dataset.loggerMode = prev || 'logger';
+  // Override the back button to just close the detail (not go to catalogue)
+  const backBtn = document.querySelector('#ex-detail-overlay .btn-ghost');
+  if (backBtn) {
+    backBtn.textContent = '← Volver';
+    backBtn.onclick = () => closeExDetail();
+  }
 }
 
 function detectPRs(newSets, previousWorkouts) {
