@@ -649,7 +649,7 @@
       </div>
       <input type="text" id="logger-name" value="Entrenamiento libre" style="font-weight:700;font-size:16px">
     </div>
-    <div id="rest-banner">⏱ Descanso: <span id="rest-count">60</span>s</div>
+    <div id="rest-banner" style="display:none"></div>
     <div style="padding:14px 16px 0" id="logger-sets"></div>
     <div style="padding:0 16px;margin-top:6px">
       <button class="btn-outline" onclick="openCatForLogger()">+ Añadir ejercicio</button>
@@ -903,6 +903,21 @@
     <img id="photo-viewer-img" style="max-width:100%;max-height:80vh;object-fit:contain;border-radius:12px">
     <div id="photo-viewer-meta" style="color:rgba(255,255,255,.6);font-size:13px;margin-top:12px;text-align:center"></div>
     <button id="photo-viewer-delete" style="margin-top:14px;background:rgba(255,92,106,.15);border:1px solid rgba(255,92,106,.3);color:#FF5C6A;border-radius:10px;padding:10px 24px;font-weight:700;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">🗑 Eliminar foto</button>
+  </div>
+
+  <!-- REST TIMER OVERLAY -->
+  <div id="rest-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:900;align-items:center;justify-content:center;flex-direction:column">
+    <div style="background:var(--bg2);border:2px solid var(--accent);border-radius:24px;padding:32px 40px;text-align:center;min-width:260px;box-shadow:0 8px 40px rgba(0,229,160,.2)">
+      <p style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">⏱ DESCANSO</p>
+      <div id="rest-overlay-count" style="font-family:'Bebas Neue',sans-serif;font-size:88px;color:var(--accent);letter-spacing:2px;line-height:1">60</div>
+      <p style="font-size:13px;color:var(--text3);margin-bottom:20px">segundos</p>
+      <div style="background:var(--bg3);border-radius:6px;height:6px;overflow:hidden;margin-bottom:24px">
+        <div id="rest-overlay-bar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:6px;width:100%"></div>
+      </div>
+      <button onclick="stopRestTimer()" style="background:none;border:2px solid var(--border);color:var(--text2);border-radius:14px;padding:13px 32px;font-weight:700;font-size:15px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%">
+        ✕ Parar descanso
+      </button>
+    </div>
   </div>
 
 </div><!-- /app -->
@@ -2133,7 +2148,7 @@ function renderLoggerSets() {
           <input class="mini-input" type="number" step="0.1" placeholder="${last?.level||5}" value="${s.level||''}" oninput="updateLoggerSet(${i},'level',this.value)" id="ls-reps-${i}">
         </div>
       </div>` : `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 72px;gap:8px;margin-bottom:10px">
         <div>
           <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">PESO (kg)</label>
           <input class="mini-input" type="number" placeholder="${last?last.weight:0}" value="${s.weight||''}" oninput="updateLoggerSet(${i},'weight',this.value)" id="ls-weight-${i}">
@@ -2141,6 +2156,10 @@ function renderLoggerSets() {
         <div>
           <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">REPS OBJETIVO</label>
           <input class="mini-input" type="number" value="${s.reps||''}" oninput="updateLoggerSet(${i},'reps',this.value)" id="ls-reps-${i}">
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--yellow);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">RIR</label>
+          <input class="mini-input" type="number" min="0" max="5" placeholder="?" value="${s.rir!==undefined&&s.rir!==''?s.rir:''}" oninput="updateLoggerSet(${i},'rir',this.value)" id="ls-rir-${i}" style="border-color:${s.rir!==undefined&&s.rir!==''?'rgba(255,209,102,.5)':'var(--border)'}">
         </div>
       </div>`;
 
@@ -2171,12 +2190,14 @@ function removeLoggerSet(i) { loggerSets.splice(i,1); renderLoggerSets(); saveAc
 function toggleSetDone(i) {
   const wEl = document.getElementById(`ls-weight-${i}`);
   const rEl = document.getElementById(`ls-reps-${i}`);
+  const rirEl = document.getElementById(`ls-rir-${i}`);
   if (isCardio(loggerSets[i].exerciseId)) {
     if (wEl && wEl.value !== '') loggerSets[i].mins = Number(wEl.value);
     if (rEl && rEl.value !== '') loggerSets[i].level = Number(rEl.value);
   } else {
     if (wEl && wEl.value !== '') loggerSets[i].weight = wEl.value;
     if (rEl && rEl.value !== '') loggerSets[i].reps = Number(rEl.value);
+    if (rirEl && rirEl.value !== '') loggerSets[i].rir = Number(rirEl.value);
   }
   loggerSets[i].done = !loggerSets[i].done;
   const isDone = loggerSets[i].done;
@@ -2188,25 +2209,42 @@ function toggleSetDone(i) {
 function startRestTimer(secs) {
   clearInterval(restInterval);
   restEndTime = Date.now() + secs * 1000;
-  const banner = document.getElementById('rest-banner');
-  const count = document.getElementById('rest-count');
-  banner.style.display='block';
-  count.textContent = secs;
+  const overlay = document.getElementById('rest-overlay');
+  const countEl = document.getElementById('rest-overlay-count');
+  const barEl = document.getElementById('rest-overlay-bar');
 
-  // Schedule Web Notification for when rest ends (works in background)
+  overlay.style.display = 'flex';
+  countEl.textContent = secs;
+  // Reset bar then animate drain
+  barEl.style.transition = 'none';
+  barEl.style.width = '100%';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      barEl.style.transition = 'width ' + secs + 's linear';
+      barEl.style.width = '0%';
+    });
+  });
+
   scheduleRestNotification(secs);
 
   restInterval = setInterval(()=>{
     const remaining = Math.ceil((restEndTime - Date.now()) / 1000);
     if (remaining <= 0) {
       clearInterval(restInterval);
-      banner.style.display='none';
+      restEndTime = null;
+      overlay.style.display = 'none';
       if(navigator.vibrate) navigator.vibrate([200,100,200]);
       showToast('⏱ ¡Descanso terminado!');
     } else {
-      count.textContent = remaining;
+      countEl.textContent = remaining;
     }
-  }, 250); // poll 4x/sec so display stays accurate after returning to app
+  }, 250);
+}
+
+function stopRestTimer() {
+  clearInterval(restInterval);
+  restEndTime = null;
+  document.getElementById('rest-overlay').style.display = 'none';
 }
 
 function scheduleRestNotification(secs) {
@@ -2269,31 +2307,30 @@ document.addEventListener('visibilitychange', function() {
       }, 1000);
     }
 
-    // --- Rest timer: resync banner o mostrarlo como terminado ---
+    // --- Rest timer: resync overlay o mostrarlo como terminado ---
     if (restEndTime) {
       const remaining = Math.ceil((restEndTime - Date.now()) / 1000);
-      const banner = document.getElementById('rest-banner');
-      const count = document.getElementById('rest-count');
+      const overlay = document.getElementById('rest-overlay');
+      const countEl = document.getElementById('rest-overlay-count');
       if (remaining > 0) {
-        count.textContent = remaining;
-        banner.style.display = 'block';
-        // Reiniciar el intervalo del descanso también
+        if (countEl) countEl.textContent = remaining;
+        if (overlay) overlay.style.display = 'flex';
         clearInterval(restInterval);
         restInterval = setInterval(() => {
           const rem = Math.ceil((restEndTime - Date.now()) / 1000);
           if (rem <= 0) {
             clearInterval(restInterval);
-            banner.style.display = 'none';
+            if (overlay) overlay.style.display = 'none';
             restEndTime = null;
             if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
             showToast('⏱ ¡Descanso terminado!');
           } else {
-            count.textContent = rem;
+            if (countEl) countEl.textContent = rem;
           }
         }, 250);
       } else {
         // El descanso terminó mientras estábamos fuera
-        banner.style.display = 'none';
+        if (overlay) overlay.style.display = 'none';
         restEndTime = null;
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         showToast('⏱ ¡Descanso terminado!');
