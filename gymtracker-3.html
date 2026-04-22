@@ -2148,7 +2148,7 @@ function renderLoggerSets() {
           <input class="mini-input" type="number" step="0.1" placeholder="${last?.level||5}" value="${s.level||''}" oninput="updateLoggerSet(${i},'level',this.value)" id="ls-reps-${i}">
         </div>
       </div>` : `
-      <div style="display:grid;grid-template-columns:1fr 1fr 72px;gap:8px;margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div>
           <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">PESO (kg)</label>
           <input class="mini-input" type="number" placeholder="${last?last.weight:0}" value="${s.weight||''}" oninput="updateLoggerSet(${i},'weight',this.value)" id="ls-weight-${i}">
@@ -2157,9 +2157,11 @@ function renderLoggerSets() {
           <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">REPS OBJETIVO</label>
           <input class="mini-input" type="number" value="${s.reps||''}" oninput="updateLoggerSet(${i},'reps',this.value)" id="ls-reps-${i}">
         </div>
-        <div>
-          <label style="font-size:10px;color:var(--yellow);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">RIR</label>
-          <input class="mini-input" type="number" min="0" max="5" placeholder="?" value="${s.rir!==undefined&&s.rir!==''?s.rir:''}" oninput="updateLoggerSet(${i},'rir',this.value)" id="ls-rir-${i}" style="border-color:${s.rir!==undefined&&s.rir!==''?'rgba(255,209,102,.5)':'var(--border)'}">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:10px;color:var(--yellow);font-weight:700;text-transform:uppercase;display:block;margin-bottom:5px">RIR — Reps en reserva</label>
+        <div style="display:flex;gap:6px">
+          ${[['#FF4D4D','#FF4D4D'],['#FF8C42','#FF8C42'],['#FFD166','#FFD166'],['#6BCB77','#6BCB77'],['#A8E6CF','#A8E6CF']].map(([col], v) => `<button onclick="setRIR(${i},${v})" style="flex:1;padding:8px 0;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid ${s.rir===v?col:'var(--border)'};background:${s.rir===v?col+'22':'var(--bg)'};color:${s.rir===v?col:'var(--text3)'}">+${v}</button>`).join('')}
         </div>
       </div>`;
 
@@ -2186,18 +2188,21 @@ function renderLoggerSets() {
 
 function updateLoggerSet(i,field,val) { loggerSets[i][field]=field==='weight'?val:Number(val); saveActiveSession(); }
 function removeLoggerSet(i) { loggerSets.splice(i,1); renderLoggerSets(); saveActiveSession(); }
+function setRIR(i, val) {
+  loggerSets[i].rir = loggerSets[i].rir === val ? undefined : val;
+  saveActiveSession();
+  renderLoggerSets();
+}
 
 function toggleSetDone(i) {
   const wEl = document.getElementById(`ls-weight-${i}`);
   const rEl = document.getElementById(`ls-reps-${i}`);
-  const rirEl = document.getElementById(`ls-rir-${i}`);
   if (isCardio(loggerSets[i].exerciseId)) {
     if (wEl && wEl.value !== '') loggerSets[i].mins = Number(wEl.value);
     if (rEl && rEl.value !== '') loggerSets[i].level = Number(rEl.value);
   } else {
     if (wEl && wEl.value !== '') loggerSets[i].weight = wEl.value;
     if (rEl && rEl.value !== '') loggerSets[i].reps = Number(rEl.value);
-    if (rirEl && rirEl.value !== '') loggerSets[i].rir = Number(rirEl.value);
   }
   loggerSets[i].done = !loggerSets[i].done;
   const isDone = loggerSets[i].done;
