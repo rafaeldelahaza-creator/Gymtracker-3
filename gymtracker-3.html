@@ -284,6 +284,15 @@
   /* MUSCLE DIST BAR */
   .mdist-bar-wrap { background:var(--bg3); border-radius:6px; height:8px; overflow:hidden; flex:1; }
   .mdist-bar-fill { height:100%; border-radius:6px; transition:width .6s ease; }
+
+  /* REST TIME BUTTONS */
+  .rest-t-btn {
+    background:var(--bg); border:1px solid var(--border); color:var(--text2);
+    border-radius:8px; padding:7px 4px; font-size:12px; font-weight:700;
+    cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .15s;
+  }
+  .rest-t-btn.active { background:rgba(0,229,160,.12); border-color:var(--accent); color:var(--accent); }
+  .rest-t-btn:active { transform:scale(.95); }
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -327,57 +336,47 @@
             <!-- SVG silhouette -->
             <div style="flex-shrink:0;width:110px">
               <svg id="body-svg" viewBox="0 0 110 220" width="110" height="220" xmlns="http://www.w3.org/2000/svg">
-                <!-- BODY BASE (dark fill) -->
-                <!-- HEAD -->
-                <ellipse cx="55" cy="18" rx="14" ry="16" fill="#1E2840"/>
-                <!-- NECK -->
+                <!-- BODY BASE -->
+                <ellipse cx="55" cy="18" rx="14" ry="16" fill="#1E2840" stroke="#2A3550" stroke-width="1"/>
                 <rect x="49" y="31" width="12" height="10" rx="4" fill="#1E2840"/>
-                <!-- TORSO -->
-                <rect x="32" y="40" width="46" height="58" rx="8" fill="#1E2840"/>
-                <!-- ARMS L -->
-                <rect x="14" y="42" width="16" height="52" rx="8" fill="#1E2840"/>
-                <!-- ARMS R -->
-                <rect x="80" y="42" width="16" height="52" rx="8" fill="#1E2840"/>
-                <!-- FOREARMS L -->
-                <rect x="10" y="94" width="14" height="40" rx="7" fill="#151C30"/>
-                <!-- FOREARMS R -->
-                <rect x="86" y="94" width="14" height="40" rx="7" fill="#151C30"/>
-                <!-- LEGS L -->
-                <rect x="34" y="98" width="20" height="62" rx="8" fill="#1E2840"/>
-                <!-- LEGS R -->
-                <rect x="56" y="98" width="20" height="62" rx="8" fill="#1E2840"/>
-                <!-- CALVES L -->
-                <rect x="35" y="158" width="17" height="46" rx="8" fill="#151C30"/>
-                <!-- CALVES R -->
-                <rect x="58" y="158" width="17" height="46" rx="8" fill="#151C30"/>
+                <rect x="32" y="40" width="46" height="58" rx="8" fill="#1E2840" stroke="#2A3550" stroke-width="1"/>
+                <rect x="14" y="42" width="16" height="52" rx="8" fill="#1E2840" stroke="#2A3550" stroke-width="1"/>
+                <rect x="80" y="42" width="16" height="52" rx="8" fill="#1E2840" stroke="#2A3550" stroke-width="1"/>
+                <rect x="10" y="94" width="14" height="40" rx="7" fill="#151C30" stroke="#2A3550" stroke-width="1"/>
+                <rect x="86" y="94" width="14" height="40" rx="7" fill="#151C30" stroke="#2A3550" stroke-width="1"/>
+                <rect x="34" y="98" width="20" height="62" rx="8" fill="#1E2840" stroke="#2A3550" stroke-width="1"/>
+                <rect x="56" y="98" width="20" height="62" rx="8" fill="#1E2840" stroke="#2A3550" stroke-width="1"/>
+                <rect x="35" y="158" width="17" height="46" rx="8" fill="#151C30" stroke="#2A3550" stroke-width="1"/>
+                <rect x="58" y="158" width="17" height="46" rx="8" fill="#151C30" stroke="#2A3550" stroke-width="1"/>
 
-                <!-- MUSCLE ZONES (colored overlays) -->
-                <!-- Pecho -->
+                <!-- MUSCLE ZONES — filled + stroke for visibility -->
                 <rect id="zone-Pecho" class="body-zone" x="36" y="44" width="38" height="24" rx="5" fill="#FF6B6B" opacity="0"/>
-                <!-- Hombros L -->
-                <ellipse id="zone-Hombros-L" class="body-zone" cx="28" cy="47" rx="10" ry="8" fill="#FFD166" opacity="0"/>
-                <!-- Hombros R -->
-                <ellipse id="zone-Hombros-R" class="body-zone" cx="82" cy="47" rx="10" ry="8" fill="#FFD166" opacity="0"/>
-                <!-- Espalda (rendered same pos, toggled) -->
+                <ellipse id="zone-Hombros-L" class="body-zone" cx="22" cy="47" rx="10" ry="9" fill="#FFD166" opacity="0"/>
+                <ellipse id="zone-Hombros-R" class="body-zone" cx="88" cy="47" rx="10" ry="9" fill="#FFD166" opacity="0"/>
                 <rect id="zone-Espalda" class="body-zone" x="36" y="44" width="38" height="36" rx="5" fill="#4ECDC4" opacity="0"/>
-                <!-- Bíceps L -->
                 <rect id="zone-Bíceps-L" class="body-zone" x="15" y="48" width="13" height="24" rx="6" fill="#A8E6CF" opacity="0"/>
-                <!-- Bíceps R -->
                 <rect id="zone-Bíceps-R" class="body-zone" x="82" y="48" width="13" height="24" rx="6" fill="#A8E6CF" opacity="0"/>
-                <!-- Tríceps L -->
                 <rect id="zone-Tríceps-L" class="body-zone" x="15" y="60" width="13" height="28" rx="6" fill="#FF8B94" opacity="0"/>
-                <!-- Tríceps R -->
                 <rect id="zone-Tríceps-R" class="body-zone" x="82" y="60" width="13" height="28" rx="6" fill="#FF8B94" opacity="0"/>
-                <!-- Core -->
                 <rect id="zone-Core" class="body-zone" x="39" y="70" width="32" height="26" rx="5" fill="#B5C8FF" opacity="0"/>
-                <!-- Piernas L -->
                 <rect id="zone-Piernas-L" class="body-zone" x="35" y="100" width="18" height="56" rx="7" fill="#7EC8E3" opacity="0"/>
-                <!-- Piernas R -->
                 <rect id="zone-Piernas-R" class="body-zone" x="57" y="100" width="18" height="56" rx="7" fill="#7EC8E3" opacity="0"/>
-                <!-- Glúteos -->
                 <ellipse id="zone-Glúteos" class="body-zone" cx="55" cy="102" rx="20" ry="10" fill="#FFDAC1" opacity="0"/>
-                <!-- Cardio (whole body glow) -->
                 <rect id="zone-Cardio" class="body-zone" x="32" y="40" width="46" height="58" rx="8" fill="#FF9AA2" opacity="0"/>
+
+                <!-- STROKE OUTLINES on top (always visible, colored when active) -->
+                <rect id="outline-Pecho" x="36" y="44" width="38" height="24" rx="5" fill="none" stroke="#FF6B6B" stroke-width="0"/>
+                <ellipse id="outline-Hombros-L" cx="22" cy="47" rx="10" ry="9" fill="none" stroke="#FFD166" stroke-width="0"/>
+                <ellipse id="outline-Hombros-R" cx="88" cy="47" rx="10" ry="9" fill="none" stroke="#FFD166" stroke-width="0"/>
+                <rect id="outline-Espalda" x="36" y="44" width="38" height="36" rx="5" fill="none" stroke="#4ECDC4" stroke-width="0"/>
+                <rect id="outline-Bíceps-L" x="15" y="48" width="13" height="24" rx="6" fill="none" stroke="#A8E6CF" stroke-width="0"/>
+                <rect id="outline-Bíceps-R" x="82" y="48" width="13" height="24" rx="6" fill="none" stroke="#A8E6CF" stroke-width="0"/>
+                <rect id="outline-Tríceps-L" x="15" y="60" width="13" height="28" rx="6" fill="none" stroke="#FF8B94" stroke-width="0"/>
+                <rect id="outline-Tríceps-R" x="82" y="60" width="13" height="28" rx="6" fill="none" stroke="#FF8B94" stroke-width="0"/>
+                <rect id="outline-Core" x="39" y="70" width="32" height="26" rx="5" fill="none" stroke="#B5C8FF" stroke-width="0"/>
+                <rect id="outline-Piernas-L" x="35" y="100" width="18" height="56" rx="7" fill="none" stroke="#7EC8E3" stroke-width="0"/>
+                <rect id="outline-Piernas-R" x="57" y="100" width="18" height="56" rx="7" fill="none" stroke="#7EC8E3" stroke-width="0"/>
+                <ellipse id="outline-Glúteos" cx="55" cy="102" rx="20" ry="10" fill="none" stroke="#FFDAC1" stroke-width="0"/>
               </svg>
             </div>
             <!-- Muscle legend -->
@@ -907,14 +906,24 @@
 
   <!-- REST TIMER OVERLAY -->
   <div id="rest-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:900;align-items:center;justify-content:center;flex-direction:column">
-    <div style="background:var(--bg2);border:2px solid var(--accent);border-radius:24px;padding:32px 40px;text-align:center;min-width:260px;box-shadow:0 8px 40px rgba(0,229,160,.2)">
-      <p style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">⏱ DESCANSO</p>
+    <div style="background:var(--bg2);border:2px solid var(--accent);border-radius:24px;padding:24px 28px;text-align:center;min-width:280px;box-shadow:0 8px 40px rgba(0,229,160,.2)">
+      <p style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⏱ DESCANSO</p>
       <div id="rest-overlay-count" style="font-family:'Bebas Neue',sans-serif;font-size:88px;color:var(--accent);letter-spacing:2px;line-height:1">60</div>
-      <p style="font-size:13px;color:var(--text3);margin-bottom:20px">segundos</p>
-      <div style="background:var(--bg3);border-radius:6px;height:6px;overflow:hidden;margin-bottom:24px">
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">segundos</p>
+      <div style="background:var(--bg3);border-radius:6px;height:6px;overflow:hidden;margin-bottom:18px">
         <div id="rest-overlay-bar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:6px;width:100%"></div>
       </div>
-      <button onclick="stopRestTimer()" style="background:none;border:2px solid var(--border);color:var(--text2);border-radius:14px;padding:13px 32px;font-weight:700;font-size:15px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%">
+      <!-- Quick time buttons -->
+      <p style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Ajustar tiempo</p>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:16px" id="rest-time-btns">
+        <button onclick="changeRestTime(30)"  class="rest-t-btn">30s</button>
+        <button onclick="changeRestTime(45)"  class="rest-t-btn">45s</button>
+        <button onclick="changeRestTime(60)"  class="rest-t-btn active">60s</button>
+        <button onclick="changeRestTime(90)"  class="rest-t-btn">90s</button>
+        <button onclick="changeRestTime(120)" class="rest-t-btn" style="grid-column:span 2">2 min</button>
+        <button onclick="changeRestTime(150)" class="rest-t-btn" style="grid-column:span 2">2:30</button>
+      </div>
+      <button onclick="stopRestTimer()" style="background:none;border:2px solid var(--border);color:var(--text2);border-radius:14px;padding:12px 32px;font-weight:700;font-size:15px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%">
         ✕ Parar descanso
       </button>
     </div>
@@ -1262,12 +1271,12 @@ function renderDashboard() {
     const muscleStatus = MUSCLES.map(m => {
       const lastW = workouts.filter(w => w.sets.some(s => EXERCISES.find(e=>e.id===s.exerciseId)?.muscle===m))
         .sort((a,b) => b.date.localeCompare(a.date))[0];
-      let dot='⚫', recoveryColor='var(--text3)', opacity=0, status='rest';
+      let dot='⚫', recoveryColor='var(--text3)', opacity=0, strokeW=0, status='rest';
       if(lastW){
         const daysAgo = (now2 - new Date(lastW.date+'T12:00:00')) / 86400000;
-        if(daysAgo<1){dot='🟢';recoveryColor='var(--accent)';opacity=0.55;status='today';}
-        else if(daysAgo<3){dot='🟡';recoveryColor='var(--yellow)';opacity=0.35;status='recent';}
-        else{dot='🔴';recoveryColor='#FF6B6B';opacity=0.18;status='old';}
+        if(daysAgo<1){dot='🟢';recoveryColor='var(--accent)';opacity=0.85;strokeW=1.5;status='today';}
+        else if(daysAgo<3){dot='🟡';recoveryColor='var(--yellow)';opacity=0.55;strokeW=1;status='recent';}
+        else{dot='🔴';recoveryColor='#FF6B6B';opacity=0.25;strokeW=0.5;status='old';}
       }
       const rec = RECOMMENDED_SETS[m] || {min:8, max:16};
       const weeklySets = routineSetsPerMuscle[m] || 0;
@@ -1278,12 +1287,19 @@ function renderDashboard() {
       else if (weeklySets <= rec.max){ volumeColor='var(--accent)'; volumeLabel=`${weeklySets} series ✓`; }
       else                           { volumeColor='var(--yellow)'; volumeLabel=`Alto (${weeklySets}s)`; }
 
-      return {m, dot, recoveryColor, opacity, status, weeklySets, pct, volumeColor, volumeLabel, rec};
+      return {m, dot, recoveryColor, opacity, strokeW, status, weeklySets, pct, volumeColor, volumeLabel, rec};
     });
 
-    // Aplicar opacidad al SVG
-    muscleStatus.forEach(({m, opacity}) => {
+    // Aplicar opacidad + stroke al SVG
+    muscleStatus.forEach(({m, opacity, strokeW}) => {
       document.querySelectorAll(`[id^="zone-${m}"]`).forEach(z => z.setAttribute('opacity', opacity));
+      const outline = document.getElementById(`outline-${m}`);
+      if (outline) outline.setAttribute('stroke-width', strokeW);
+      // Para músculos con L/R
+      ['L','R'].forEach(side => {
+        const ol = document.getElementById(`outline-${m}-${side}`);
+        if (ol) ol.setAttribute('stroke-width', strokeW);
+      });
     });
 
     // ── Leyenda con análisis de volumen ──
@@ -2264,6 +2280,14 @@ function startRestTimer(secs) {
 
   overlay.style.display = 'flex';
   countEl.textContent = secs;
+
+  // Highlight the matching time button
+  document.querySelectorAll('.rest-t-btn').forEach(b => b.classList.remove('active'));
+  const times = [30,45,60,90,120,150];
+  const btns = document.querySelectorAll('.rest-t-btn');
+  const idx = times.indexOf(secs);
+  if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
+
   // Reset bar then animate drain
   barEl.style.transition = 'none';
   barEl.style.width = '100%';
@@ -2282,7 +2306,7 @@ function startRestTimer(secs) {
       clearInterval(restInterval);
       restEndTime = null;
       overlay.style.display = 'none';
-      if(navigator.vibrate) navigator.vibrate([200,100,200]);
+      if(navigator.vibrate) navigator.vibrate([300,100,300,100,300]);
       showToast('⏱ ¡Descanso terminado!');
     } else {
       countEl.textContent = remaining;
@@ -2290,36 +2314,49 @@ function startRestTimer(secs) {
   }, 250);
 }
 
+function changeRestTime(secs) {
+  // Restart timer with new duration from this moment
+  startRestTimer(secs);
+}
+
 function stopRestTimer() {
   clearInterval(restInterval);
   restEndTime = null;
+  if (window._restNotifTimeout) clearTimeout(window._restNotifTimeout);
   document.getElementById('rest-overlay').style.display = 'none';
 }
 
 function scheduleRestNotification(secs) {
-  // Request permission if not granted
   if (!('Notification' in window)) return;
 
   const fireNotif = () => {
-    // Only fire if app is not visible (in background)
-    if (document.visibilityState !== 'hidden') return;
-    new Notification('GymTracker ⏱', {
-      body: '¡Descanso terminado! Hora de la siguiente serie 💪',
-      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23080C18"/><text y="46" x="32" text-anchor="middle" font-size="40">🏋️</text></svg>',
-      badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23080C18"/><text y="46" x="32" text-anchor="middle" font-size="40">🏋️</text></svg>',
-      vibrate: [200, 100, 200],
-      tag: 'rest-timer',
-      renotify: true,
-      requireInteraction: false,
-    });
+    // Vibrar siempre, esté la app visible o no
+    if(navigator.vibrate) navigator.vibrate([300,100,300,100,300]);
+    // Notificación solo si está en background (no molestar si está en pantalla)
+    if (document.visibilityState === 'hidden') {
+      try {
+        new Notification('GymTracker ⏱', {
+          body: '¡Descanso terminado! Hora de la siguiente serie 💪',
+          icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23080C18"/><text y="46" x="32" text-anchor="middle" font-size="40">🏋️</text></svg>',
+          vibrate: [300, 100, 300, 100, 300],
+          tag: 'rest-timer',
+          renotify: true,
+          requireInteraction: false,
+          silent: false,
+        });
+      } catch(e) {}
+    }
   };
 
+  // Cancelar notificación anterior si existía
+  if (window._restNotifTimeout) clearTimeout(window._restNotifTimeout);
+
   if (Notification.permission === 'granted') {
-    setTimeout(fireNotif, secs * 1000);
+    window._restNotifTimeout = setTimeout(fireNotif, secs * 1000);
   } else if (Notification.permission === 'default') {
     Notification.requestPermission().then(perm => {
       if (perm === 'granted') {
-        setTimeout(fireNotif, secs * 1000);
+        window._restNotifTimeout = setTimeout(fireNotif, secs * 1000);
       }
     });
   }
