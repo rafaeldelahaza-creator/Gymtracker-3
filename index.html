@@ -1985,7 +1985,7 @@ function addExFromDetail() {
     const oldName = swapExerciseName;
     loggerSets = loggerSets.map(s => {
       if (s.exercise === oldName) {
-        return Object.assign({}, s, { exerciseId: e.id, exercise: e.name });
+        return Object.assign({}, s, { exerciseId: e.id, exercise: e.name, done: false, weight: '', reps: s.reps, rir: undefined });
       }
       return s;
     });
@@ -2238,8 +2238,8 @@ function renderLoggerSets() {
 
     const isLastOfExercise = i === loggerSets.length - 1 || loggerSets[i+1].exercise !== s.exercise;
 
-    const setsOfEx = loggerSets.filter(x => x.exercise === s.exercise);
-    const doneCount = loggerSets.filter(x => x.exercise === s.exercise && x.done).length;
+    const setsOfEx = loggerSets.filter(x => x.exercise === s.exercise && x.exerciseId === s.exerciseId);
+    const doneCount = setsOfEx.filter(x => x.done).length;
     const totalCount = setsOfEx.length;
     const exEmoji = (() => { const ex = EXERCISES.find(e=>e.id===s.exerciseId); return ex?.emoji||'💪'; })();
 
