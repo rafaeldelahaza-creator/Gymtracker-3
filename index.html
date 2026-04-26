@@ -2293,7 +2293,7 @@ function renderLoggerSets() {
               <p style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.5px;color:var(--text);margin:0;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.exercise}</p>
               <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
                 ${s.exerciseId && EXERCISES.find(e=>e.id===s.exerciseId) ? `<button onclick="openExDetailFromLogger('${s.exerciseId}')" style="background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;line-height:1.6">ⓘ info</button>` : ''}
-                <button onclick="openSwapExercise('${s.exercise.replace(/'/g,"\\'")}',${i})" style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);color:var(--yellow);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;line-height:1.6">🔄 cambiar</button>
+                <button onclick="openSwapExerciseLogger('${s.exercise.replace(/'/g,"\\'")}',${i})" style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);color:var(--yellow);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;line-height:1.6">🔄 cambiar</button>
               </div>
             </div>
           </div>
@@ -3401,7 +3401,7 @@ function renderFsLog() {
 }
 
 // Catalogue from freestyle — sets fsExSelected on pick
-function openSwapExercise(exerciseName, idx) {
+function openSwapExerciseLogger(exerciseName, idx) {
   swapExerciseName = exerciseName;
   catMode = 'swapExercise';
   document.getElementById('cat-overlay-title').textContent = 'Cambiar ejercicio';
