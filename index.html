@@ -2205,40 +2205,28 @@ function renderLoggerSets() {
     const last = showHeader ? getLastExData(s.exerciseId) : null;
     const cardio = isCardio(s.exerciseId);
 
-    const lastInfo = last
-      ? (last.cardio
-          ? `<span style="font-size:11px;color:var(--text3)">Último: <b style="color:var(--accent)">${last.mins}min · Nv.${last.level}</b> (${last.date})</span>`
-          : `<span style="font-size:11px;color:var(--text3)">${last.date}</span>`)
-      : `<span style="font-size:11px;color:var(--text3)">Sin historial</span>`;
+    const RIR_COLORS = ['#FF4D4D','#FF8C42','#FFD166','#6BCB77','#A8E6CF'];
 
-    // Full history block shown under exercise name
-    const historyBlock = (last && !last.cardio) ? `
-      <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Última sesión — ${last.date}</span>
-          ${last.prWeight > 0 ? `<span style="font-size:10px;font-weight:700;color:var(--yellow)">🏆 PR: ${last.prWeight}kg</span>` : ''}
+    // Compact history block shown only on first occurrence of each exercise
+    const historyBlock = showHeader ? ((last && !last.cardio) ? `
+      <div style="background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Última — ${last.date}</span>
+          ${last.prWeight > 0 ? `<span style="font-size:10px;font-weight:700;color:var(--yellow)">🏆 PR ${last.prWeight}kg</span>` : ''}
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
-          ${last.series.map((s,si) => {
-            const RIR_COLORS = ['#FF4D4D','#FF8C42','#FFD166','#6BCB77','#A8E6CF'];
-            const rirBadge = s.rir !== null
-              ? `<span style="background:${RIR_COLORS[s.rir]}22;color:${RIR_COLORS[s.rir]};border:1px solid ${RIR_COLORS[s.rir]}55;border-radius:5px;padding:1px 5px;font-size:10px;font-weight:700">+${s.rir}</span>`
-              : '';
-            return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:4px 9px;font-size:12px;font-weight:700;color:var(--text2)">
-              S${si+1}: ${s.weight}kg×${s.reps} ${rirBadge}
-            </div>`;
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px">
+          ${last.series.map((ls,si) => {
+            const rirBadge = ls.rir !== null
+              ? `<span style="color:${RIR_COLORS[ls.rir]};font-size:9px;font-weight:700"> +${ls.rir}</span>` : '';
+            return `<span style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:var(--text2)">S${si+1}: ${ls.weight}kg\xd7${ls.reps}${rirBadge}</span>`;
           }).join('')}
         </div>
-        <div style="display:flex;gap:12px;align-items:center">
-          <span style="font-size:11px;color:var(--text3)">Vol: <b style="color:var(--text2)">${(last.lastVol/1000).toFixed(1)}T</b></span>
-          ${last.avgRIR !== null
-            ? `<span style="font-size:11px;color:var(--text3)">RIR medio: <b style="color:var(--yellow)">${last.avgRIR.toFixed(1)}</b>
-               ${last.avgRIR <= 1 ? `<span style="color:var(--accent);font-size:10px;font-weight:700"> → Sube peso 🔼</span>`
-                : last.avgRIR >= 3 ? `<span style="color:var(--text3);font-size:10px"> → Cómodo aún</span>`
-                : `<span style="color:var(--yellow);font-size:10px"> → Zona óptima</span>`}</span>`
-            : `<span style="font-size:11px;color:var(--text3)">Sin RIR registrado</span>`}
-        </div>
-      </div>` : '';
+        ${last.avgRIR !== null
+          ? `<span style="font-size:10px;color:var(--text3)">RIR medio: <b style="color:var(--yellow)">${last.avgRIR.toFixed(1)}</b>${last.avgRIR<=1?' <span style="color:var(--accent);font-weight:700">\u2192 Sube peso \ud83d\udd3c</span>':last.avgRIR>=3?' <span style="color:var(--text3)">\u2192 C\xf3modo</span>':' <span style="color:var(--yellow)">\u2192 Zona \xf3ptima</span>'}</span>`
+          : `<span style="font-size:10px;color:var(--text3)">Sin RIR registrado a\xfan</span>`}
+      </div>` : (last && last.cardio
+        ? `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Último: <b style="color:var(--accent)">${last.mins}min · Nv.${last.level}</b> (${last.date})</div>`
+        : `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Sin historial</div>`)) : '';
 
     const inputFields = cardio ? `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
@@ -2254,49 +2242,112 @@ function renderLoggerSets() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div>
           <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">PESO (kg)</label>
-          <input class="mini-input" type="number" placeholder="${last?last.weight:0}" value="${s.weight||''}" oninput="updateLoggerSet(${i},'weight',this.value)" id="ls-weight-${i}">
+          <input class="mini-input" type="number" placeholder="${last?last.maxLastWeight||0:0}" value="${s.weight||''}" oninput="updateLoggerSet(${i},'weight',this.value)" id="ls-weight-${i}">
         </div>
         <div>
-          <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">REPS OBJETIVO</label>
+          <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">REPS</label>
           <input class="mini-input" type="number" value="${s.reps||''}" oninput="updateLoggerSet(${i},'reps',this.value)" id="ls-reps-${i}">
         </div>
       </div>
       <div style="margin-bottom:10px">
-        <label style="font-size:10px;color:var(--yellow);font-weight:700;text-transform:uppercase;display:block;margin-bottom:5px">RIR — Reps en reserva</label>
-        <div style="display:flex;gap:6px">
-          ${[['#FF4D4D','#FF4D4D'],['#FF8C42','#FF8C42'],['#FFD166','#FFD166'],['#6BCB77','#6BCB77'],['#A8E6CF','#A8E6CF']].map(([col], v) => `<button onclick="setRIR(${i},${v})" style="flex:1;padding:8px 0;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid ${s.rir===v?col:'var(--border)'};background:${s.rir===v?col+'22':'var(--bg)'};color:${s.rir===v?col:'var(--text3)'}">+${v}</button>`).join('')}
+        <label style="font-size:10px;color:var(--yellow);font-weight:700;text-transform:uppercase;display:block;margin-bottom:5px">RIR</label>
+        <div style="display:flex;gap:5px">
+          ${RIR_COLORS.map((col,v) =>
+            `<button onclick="setRIR(${i},${v})" style="flex:1;padding:7px 0;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid ${s.rir===v?col:'var(--border)'};background:${s.rir===v?col+'22':'var(--bg)'};color:${s.rir===v?col:'var(--text3)'}">+${v}</button>`
+          ).join('')}
         </div>
       </div>`;
 
+    const isLastOfExercise = i === loggerSets.length - 1 || loggerSets[i+1].exercise !== s.exercise;
+    const setsOfEx = loggerSets.filter(x => x.exercise === s.exercise && x.exerciseId === s.exerciseId);
+    const doneCount = setsOfEx.filter(x => x.done).length;
+    const totalCount = setsOfEx.length;
+    const exData = EXERCISES.find(e=>e.id===s.exerciseId);
+    const exEmoji = exData?.icon || '\ud83d\udcaa';
+    const isActive = !s.done && (i === 0 || loggerSets.slice(0,i).every(x => x.exercise !== s.exercise || x.done));
+
+    let setCardHtml;
+    if (s.done) {
+      const statsHtml = !cardio
+        ? `<span style="font-size:13px;color:var(--text3);margin-left:auto">${s.weight||0}kg \xd7 ${s.reps||0}${s.rir!==undefined?` <span style="color:${RIR_COLORS[s.rir]};font-weight:700">+${s.rir}</span>`:''}</span>`
+        : `<span style="font-size:13px;color:var(--text3);margin-left:auto">${s.mins||0}min Nv.${s.level||0}</span>`;
+      setCardHtml = `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:6px;background:rgba(0,229,160,.04);border:1px solid rgba(0,229,160,.12);border-radius:10px;opacity:.6">
+        <span style="color:var(--accent);font-size:14px;font-weight:700">\u2713</span>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--accent);letter-spacing:.5px">${cardio?'Sesi\xf3n':serieLabel}</span>
+        ${statsHtml}
+        <button style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.2);color:var(--yellow);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;padding:2px 7px;font-family:'DM Sans',sans-serif;flex-shrink:0" onclick="toggleSetDone(${i})">\u21a9</button>
+        <button style="background:none;border:none;color:var(--red);opacity:.4;cursor:pointer;font-size:13px;padding:0 0 0 4px;flex-shrink:0" onclick="removeLoggerSet(${i})">\u2715</button>
+      </div>`;
+    } else if (isActive) {
+      setCardHtml = `
+      <div class="set-card" id="set-card-${i}" style="margin-bottom:8px;border:2px solid var(--accent);background:rgba(0,229,160,.05);box-shadow:0 0 20px rgba(0,229,160,.1)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.5px;color:var(--accent)">${cardio?'\ud83c\udfc3 Sesi\xf3n':serieLabel}</span>
+          <button style="background:none;border:none;color:var(--red);opacity:.5;cursor:pointer;font-size:15px" onclick="removeLoggerSet(${i})">\u2715</button>
+        </div>
+        ${inputFields}
+        <button onclick="toggleSetDone(${i})" style="width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:12px;font-weight:900;cursor:pointer;font-size:16px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px">
+          \u2713 COMPLETAR SERIE
+        </button>
+      </div>`;
+    } else {
+      setCardHtml = `
+      <div class="set-card" id="set-card-${i}" style="margin-bottom:8px;opacity:.35">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.5px;color:var(--text2)">${cardio?'\ud83c\udfc3 Sesi\xf3n':serieLabel}</span>
+          <button style="background:none;border:none;color:var(--red);opacity:.5;cursor:pointer;font-size:15px" onclick="removeLoggerSet(${i})">\u2715</button>
+        </div>
+        ${inputFields}
+        <button onclick="toggleSetDone(${i})" style="width:100%;background:var(--bg3);color:var(--text3);border:1px solid var(--border);border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif">
+          Completar
+        </button>
+      </div>`;
+    }
+
     return `
     ${showHeader ? `
-      <div style="margin:${i===0?0:16}px 0 6px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${last&&!last.cardio?6:0}px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <p style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:0">${s.exercise}</p>
-            ${s.exerciseId && EXERCISES.find(e=>e.id===s.exerciseId) ? `<button onclick="openExDetailFromLogger('${s.exerciseId}')" style="background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;line-height:1.6">ⓘ</button>` : ''}
+      <div style="margin-top:${i===0?'0':'20px'};margin-bottom:12px;padding:14px 16px 12px;background:linear-gradient(135deg,rgba(0,229,160,.07),rgba(0,229,160,.02));border:1px solid rgba(0,229,160,.18);border-radius:16px 16px 8px 8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+            <span style="font-size:26px;flex-shrink:0">${exEmoji}</span>
+            <div style="flex:1;min-width:0">
+              <p style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.5px;color:var(--text);margin:0;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.exercise}</p>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                ${s.exerciseId && EXERCISES.find(e=>e.id===s.exerciseId) ? `<button onclick="openExDetailFromLogger('${s.exerciseId}')" style="background:var(--bg3);border:1px solid var(--border);color:var(--text3);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;line-height:1.6">\u24d8 info</button>` : ''}
+                <button onclick="openSwapExerciseLogger('${s.exercise.replace(/'/g,"\\'")}',${i})" style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);color:var(--yellow);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;line-height:1.6">\ud83d\udd04 cambiar</button>
+              </div>
+            </div>
           </div>
-          ${lastInfo}
+          <div style="text-align:right;flex-shrink:0;margin-left:8px">
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--accent);line-height:1">${doneCount}/${totalCount}</span>
+            <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase">series</div>
+          </div>
+        </div>
+        <div style="height:4px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-bottom:8px">
+          <div style="height:100%;width:${totalCount>0?Math.round(doneCount/totalCount*100):0}%;background:var(--accent);border-radius:4px;transition:width .4s ease"></div>
         </div>
         ${historyBlock}
       </div>` : ''}
-    <div class="set-card ${s.done?'done':''}" style="margin-bottom:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px;color:${s.done?'var(--accent)':'var(--text2)'}">
-          ${s.done?'✓':''} ${cardio ? '🏃 Sesión' : serieLabel}
-        </span>
-        <button style="background:none;border:none;color:var(--red);opacity:.5;cursor:pointer;font-size:15px" onclick="removeLoggerSet(${i})">✕</button>
-      </div>
-      ${inputFields}
-      <button onclick="toggleSetDone(${i})" style="width:100%;background:${s.done?'rgba(0,229,160,.1)':'var(--accent)'};color:${s.done?'var(--accent)':'var(--bg)'};border:${s.done?'1px solid rgba(0,229,160,.3)':'none'};border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;transition:all .2s">
-        ${s.done?'✓ Completado':'Completar'}
-      </button>
-    </div>`;
+    ${setCardHtml}
+    ${isLastOfExercise ? `
+    <button onclick="addExtraSet(${i})" style="width:100%;background:transparent;border:1px dashed var(--accent2);color:var(--accent);border-radius:10px;padding:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;margin-bottom:4px;opacity:.8">
+      + Serie extra
+    </button>` : ''}`;
   }).join('');
 }
 
 function updateLoggerSet(i,field,val) { loggerSets[i][field]=field==='weight'?val:Number(val); saveActiveSession(); }
 function removeLoggerSet(i) { loggerSets.splice(i,1); renderLoggerSets(); saveActiveSession(); }
+function addExtraSet(i) {
+  const ref = loggerSets[i];
+  const sameEx = loggerSets.filter(s => s.exercise === ref.exercise);
+  const newSet = Object.assign({}, ref, { serieNum: sameEx.length + 1, totalSeries: null, done: false, rir: undefined });
+  loggerSets.splice(i + 1, 0, newSet);
+  renderLoggerSets();
+  saveActiveSession();
+}
+
 function setRIR(i, val) {
   loggerSets[i].rir = loggerSets[i].rir === val ? undefined : val;
   saveActiveSession();
@@ -2317,9 +2368,16 @@ function toggleSetDone(i) {
   const isDone = loggerSets[i].done;
   renderLoggerSets();
   saveActiveSession();
-  if (isDone) startRestTimer(loggerSets[i].rest||60);
+  if (isDone) {
+    setTimeout(() => {
+      const nextIdx = loggerSets.findIndex((s,j) => j > i && !s.done);
+      const targetId = nextIdx >= 0 ? `set-card-${nextIdx}` : `set-card-${i}`;
+      const target = document.getElementById(targetId);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+    startRestTimer(loggerSets[i].rest||60);
+  }
 }
-
 function startRestTimer(secs) {
   clearInterval(restInterval);
   restEndTime = Date.now() + secs * 1000;
@@ -2478,6 +2536,16 @@ document.addEventListener('visibilitychange', function() {
     driveSave(false);
   }
 });
+
+function openSwapExerciseLogger(exerciseName, idx) {
+  swapExerciseName = exerciseName;
+  catMode = 'swapExercise';
+  document.getElementById('cat-overlay-title').textContent = 'Cambiar ejercicio';
+  catMuscleFilter = 'Todos';
+  document.getElementById('cat-search').value = '';
+  renderCatChips(); renderCatList();
+  document.getElementById('cat-overlay').style.display = 'block';
+}
 
 function openCatForLogger() {
   catMode='logger';
