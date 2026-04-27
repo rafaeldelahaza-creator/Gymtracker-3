@@ -2122,8 +2122,25 @@ function openLogger(routine) {
     routine.exercises.forEach(e=>{
       const setsCount = e.sets||3;
       const seriesReps = e.seriesReps && e.seriesReps.length===setsCount ? e.seriesReps : Array(setsCount).fill(e.reps||10);
+      // Get last session data for this exercise
+      const lastData = getLastExData(e.exerciseId);
       seriesReps.forEach((reps,si)=>{
-        loggerSets.push({exerciseId:e.exerciseId, exercise:e.name, serieNum:si+1, totalSeries:setsCount, weight:'', reps, sets:1, done:false, rest:e.rest||90});
+        // Auto-fill from last session: same serie index if exists, else last serie
+        const lastSerie = lastData && !lastData.cardio && lastData.series
+          ? (lastData.series[si] || lastData.series[lastData.series.length-1])
+          : null;
+        loggerSets.push({
+          exerciseId: e.exerciseId,
+          exercise: e.name,
+          serieNum: si+1,
+          totalSeries: setsCount,
+          weight: lastSerie ? String(lastSerie.weight) : '',
+          reps: lastSerie ? lastSerie.reps : reps,
+          rir: lastSerie && lastSerie.rir !== null ? lastSerie.rir : undefined,
+          sets: 1,
+          done: false,
+          rest: e.rest||90
+        });
       });
     });
   } else {
@@ -2201,7 +2218,7 @@ function renderLoggerSets() {
   }
   el.innerHTML = loggerSets.map((s,i)=>{
     const showHeader = i===0 || loggerSets[i-1].exercise!==s.exercise;
-    const serieLabel = s.totalSeries ? `Serie ${s.serieNum} / ${s.totalSeries}` : 'Serie';
+    const serieLabel = s.totalSeries ? `Serie ${s.serieNum} / ${s.totalSeries}` : '⚡ Extra';
     const last = showHeader ? getLastExData(s.exerciseId) : null;
     const cardio = isCardio(s.exerciseId);
 
@@ -2242,11 +2259,20 @@ function renderLoggerSets() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div>
           <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">PESO (kg)</label>
-          <input class="mini-input" type="number" placeholder="${last?last.maxLastWeight||0:0}" value="${s.weight||''}" oninput="updateLoggerSet(${i},'weight',this.value)" id="ls-weight-${i}">
+          <input class="mini-input" type="number"
+            placeholder="${last?last.maxLastWeight||0:0}"
+            value="${s.weight||''}"
+            oninput="updateLoggerSet(${i},'weight',this.value)"
+            id="ls-weight-${i}"
+            style="${s.weight?'border-color:rgba(0,229,160,.4);background:rgba(0,229,160,.05)':''}">
         </div>
         <div>
           <label style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px">REPS</label>
-          <input class="mini-input" type="number" value="${s.reps||''}" oninput="updateLoggerSet(${i},'reps',this.value)" id="ls-reps-${i}">
+          <input class="mini-input" type="number"
+            value="${s.reps||''}"
+            oninput="updateLoggerSet(${i},'reps',this.value)"
+            id="ls-reps-${i}"
+            style="${s.weight?'border-color:rgba(0,229,160,.4);background:rgba(0,229,160,.05)':''}">
         </div>
       </div>
       <div style="margin-bottom:10px">
@@ -2260,8 +2286,10 @@ function renderLoggerSets() {
 
     const isLastOfExercise = i === loggerSets.length - 1 || loggerSets[i+1].exercise !== s.exercise;
     const setsOfEx = loggerSets.filter(x => x.exercise === s.exercise && x.exerciseId === s.exerciseId);
-    const doneCount = setsOfEx.filter(x => x.done).length;
-    const totalCount = setsOfEx.length;
+    const plannedSets = setsOfEx.filter(x => x.totalSeries !== null);
+    const doneCount = plannedSets.filter(x => x.done).length;
+    const totalCount = plannedSets.length || setsOfEx.length;
+    const extraDone = setsOfEx.filter(x => x.totalSeries === null && x.done).length;
     const exData = EXERCISES.find(e=>e.id===s.exerciseId);
     const exEmoji = exData?.icon || '\ud83d\udcaa';
     const isActive = !s.done && (i === 0 || loggerSets.slice(0,i).every(x => x.exercise !== s.exercise || x.done));
@@ -2274,7 +2302,7 @@ function renderLoggerSets() {
       setCardHtml = `
       <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:6px;background:rgba(0,229,160,.04);border:1px solid rgba(0,229,160,.12);border-radius:10px;opacity:.6">
         <span style="color:var(--accent);font-size:14px;font-weight:700">\u2713</span>
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--accent);letter-spacing:.5px">${cardio?'Sesi\xf3n':serieLabel}</span>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--accent);letter-spacing:.5px">${cardio?'Sesión':serieLabel}</span>
         ${statsHtml}
         <button style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.2);color:var(--yellow);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;padding:2px 7px;font-family:'DM Sans',sans-serif;flex-shrink:0" onclick="toggleSetDone(${i})">\u21a9</button>
         <button style="background:none;border:none;color:var(--red);opacity:.4;cursor:pointer;font-size:13px;padding:0 0 0 4px;flex-shrink:0" onclick="removeLoggerSet(${i})">\u2715</button>
@@ -2321,7 +2349,7 @@ function renderLoggerSets() {
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:8px">
             <span style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--accent);line-height:1">${doneCount}/${totalCount}</span>
-            <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase">series</div>
+            <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase">series${extraDone>0?` <span style="color:var(--yellow)">+${extraDone}⚡</span>`:''}</div>
           </div>
         </div>
         <div style="height:4px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-bottom:8px">
