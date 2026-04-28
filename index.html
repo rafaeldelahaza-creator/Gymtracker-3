@@ -2125,7 +2125,7 @@ function openLogger(routine) {
       // Get last session data for this exercise
       const lastData = getLastExData(e.exerciseId);
       seriesReps.forEach((reps,si)=>{
-        // Auto-fill from last session: same serie index if exists, else last serie
+        // Auto-fill from last session: weight and RIR only — reps always from routine
         const lastSerie = lastData && !lastData.cardio && lastData.series
           ? (lastData.series[si] || lastData.series[lastData.series.length-1])
           : null;
@@ -2135,7 +2135,7 @@ function openLogger(routine) {
           serieNum: si+1,
           totalSeries: setsCount,
           weight: lastSerie ? String(lastSerie.weight) : '',
-          reps: lastSerie ? lastSerie.reps : reps,
+          reps: reps,
           rir: lastSerie && lastSerie.rir !== null ? lastSerie.rir : undefined,
           sets: 1,
           done: false,
